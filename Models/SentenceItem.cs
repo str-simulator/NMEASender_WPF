@@ -1,13 +1,22 @@
-using NMEASender.Wpf.ViewModels;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace NMEASender.Wpf.Models;
 
-public sealed class SentenceItem : ObservableObject
+public sealed partial class SentenceItem : ObservableObject
 {
+    [ObservableProperty]
     private bool _isEnabled;
+
+    [ObservableProperty]
     private bool _isDuplicateRow;
+
+    [ObservableProperty]
     private string _portName;
+
+    [ObservableProperty]
     private string _primaryText = string.Empty;
+
+    [ObservableProperty]
     private string _secondaryText = string.Empty;
 
     public SentenceItem(
@@ -36,33 +45,12 @@ public sealed class SentenceItem : ObservableObject
 
     public bool HasSecondary { get; }
 
-    public bool IsEnabled
+    partial void OnPortNameChanged(string value)
     {
-        get => _isEnabled;
-        set => SetProperty(ref _isEnabled, value);
-    }
-
-    public bool IsDuplicateRow
-    {
-        get => _isDuplicateRow;
-        set => SetProperty(ref _isDuplicateRow, value);
-    }
-
-    public string PortName
-    {
-        get => _portName;
-        set => SetProperty(ref _portName, (value ?? string.Empty).Trim());
-    }
-
-    public string PrimaryText
-    {
-        get => _primaryText;
-        set => SetProperty(ref _primaryText, value);
-    }
-
-    public string SecondaryText
-    {
-        get => _secondaryText;
-        set => SetProperty(ref _secondaryText, value);
+        string normalized = (value ?? string.Empty).Trim();
+        if (!string.Equals(value, normalized, StringComparison.Ordinal))
+        {
+            PortName = normalized;
+        }
     }
 }

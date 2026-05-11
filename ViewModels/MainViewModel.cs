@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -9,42 +11,100 @@ using NMEASender.Wpf.Services;
 
 namespace NMEASender.Wpf.ViewModels;
 
-public sealed class MainViewModel : ObservableObject, IDisposable
+public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly DispatcherTimer _timer;
-    private readonly SerialPortHub _serialPortHub = new();
-    private readonly UdpBroadcastSender _udpSender = new();
-    private readonly SharedMemoryNmeaDataProvider _sharedMemoryDataProvider = new();
-    private readonly SentenceComposerService _sentenceComposer = new();
-    private readonly SentenceCatalogService _sentenceCatalog = new();
+    private readonly SerialPortHub _serialPortHub;
+    private readonly UdpBroadcastSender _udpSender;
+    private readonly SharedMemoryNmeaDataProvider _sharedMemoryDataProvider;
+    private readonly SentenceComposerService _sentenceComposer;
+    private readonly SentenceCatalogService _sentenceCatalog;
     private readonly NmeaSenderConfig _config;
-    private readonly RelayCommand _startCommand;
-    private readonly RelayCommand _stopCommand;
-    private readonly RelayCommand _addSentenceRowCommand;
-    private readonly RelayCommand _removeSentenceRowCommand;
     private readonly HashSet<string> _openPorts = new(StringComparer.OrdinalIgnoreCase);
-    private bool _isRunning;
-    private bool _isOpening;
     private bool _sharedMemoryWarningLogged;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsComSettingsEditable))]
+    [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StopCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddSentenceRowCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveSentenceRowCommand))]
+    private bool _isRunning;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsComSettingsEditable))]
+    [NotifyCanExecuteChangedFor(nameof(StartCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddSentenceRowCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveSentenceRowCommand))]
+    private bool _isOpening;
+
+    [ObservableProperty]
     private bool _isTestSource;
+
+    [ObservableProperty]
     private bool _isIosSource = true;
+
+    [ObservableProperty]
     private bool _useTrueWind;
+
+    [ObservableProperty]
     private bool _useHdmOutput;
+
+    [ObservableProperty]
     private bool _useUdp;
+
+    [ObservableProperty]
     private bool _areAllSentencesChecked = true;
     private bool _isSynchronizingAllSentencesChecked;
-    private string _title;
-    private string _defaultPort;
+
+    [ObservableProperty]
+    private string _title = string.Empty;
+
+    [ObservableProperty]
+    private string _defaultPort = string.Empty;
+
+    [ObservableProperty]
     private string _udpPortText = "40014";
+
+    [ObservableProperty]
     private string _longitudeText = "129.0000";
+
+    [ObservableProperty]
     private string _latitudeText = "35.0000";
+
+    [ObservableProperty]
     private string _speedText = "0.0";
+
+    [ObservableProperty]
     private string _headingText = "0.0";
+
     private NmeaDataDto _data = new();
 
     public MainViewModel()
+        : this(
+            new SerialPortHub(),
+            new UdpBroadcastSender(),
+            new SharedMemoryNmeaDataProvider(),
+            new SentenceComposerService(),
+            new SentenceCatalogService(),
+            NmeaSenderConfig.Load())
     {
-        _config = NmeaSenderConfig.Load();
+    }
+
+    public MainViewModel(
+        SerialPortHub serialPortHub,
+        UdpBroadcastSender udpSender,
+        SharedMemoryNmeaDataProvider sharedMemoryDataProvider,
+        SentenceComposerService sentenceComposer,
+        SentenceCatalogService sentenceCatalog,
+        NmeaSenderConfig config)
+    {
+        _serialPortHub = serialPortHub ?? throw new ArgumentNullException(nameof(serialPortHub));
+        _udpSender = udpSender ?? throw new ArgumentNullException(nameof(udpSender));
+        _sharedMemoryDataProvider = sharedMemoryDataProvider ?? throw new ArgumentNullException(nameof(sharedMemoryDataProvider));
+        _sentenceComposer = sentenceComposer ?? throw new ArgumentNullException(nameof(sentenceComposer));
+        _sentenceCatalog = sentenceCatalog ?? throw new ArgumentNullException(nameof(sentenceCatalog));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
         _title = _config.Title;
         _defaultPort = _config.DefaultPort;
         _useTrueWind = _config.TrueWind;
@@ -54,23 +114,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_config.SendInterval) };
         _timer.Tick += (_, _) => SendTick();
 
-        _startCommand = new RelayCommand(Start, () => !IsRunning && !IsOpening);
-        _stopCommand = new RelayCommand(Stop, () => IsRunning);
-        ApplyDefaultPortCommand = new RelayCommand(ApplyDefaultPort);
-        RefreshPortsCommand = new RelayCommand(RefreshPorts);
-        SetDataCommand = new RelayCommand(SetData);
-        GetDataCommand = new RelayCommand(GetData);
-        _addSentenceRowCommand = new RelayCommand(AddSentenceRow, _ => IsComSettingsEditable);
-        _removeSentenceRowCommand = new RelayCommand(RemoveSentenceRow, CanRemoveSentenceRow);
-        ClearLogCommand = new RelayCommand(ClearLog);
-        ExitCommand = new RelayCommand(Exit);
-
         RefreshPorts();
         BuildSentenceRows();
         SetData();
         AddLog("COM Close");
 
-        Start();
+        _ = Start();
     }
 
     public ObservableCollection<string> Ports { get; } = new();
@@ -83,165 +132,64 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private readonly List<SentenceItem> _internalSentences = new();
 
-    public RelayCommand StartCommand => _startCommand;
-
-    public RelayCommand StopCommand => _stopCommand;
-
-    public RelayCommand ApplyDefaultPortCommand { get; }
-
-    public RelayCommand RefreshPortsCommand { get; }
-
-    public RelayCommand SetDataCommand { get; }
-
-    public RelayCommand GetDataCommand { get; }
-
-    public RelayCommand AddSentenceRowCommand => _addSentenceRowCommand;
-
-    public RelayCommand RemoveSentenceRowCommand => _removeSentenceRowCommand;
-
-    public RelayCommand ClearLogCommand { get; }
-
-    public RelayCommand ExitCommand { get; }
-
-    public bool IsRunning
-    {
-        get => _isRunning;
-        private set
-        {
-            if (SetProperty(ref _isRunning, value))
-            {
-                _startCommand.RaiseCanExecuteChanged();
-                _stopCommand.RaiseCanExecuteChanged();
-                _addSentenceRowCommand.RaiseCanExecuteChanged();
-                _removeSentenceRowCommand.RaiseCanExecuteChanged();
-                OnPropertyChanged(nameof(IsComSettingsEditable));
-            }
-        }
-    }
-
-    public bool IsOpening
-    {
-        get => _isOpening;
-        private set
-        {
-            if (SetProperty(ref _isOpening, value))
-            {
-                _startCommand.RaiseCanExecuteChanged();
-                _addSentenceRowCommand.RaiseCanExecuteChanged();
-                _removeSentenceRowCommand.RaiseCanExecuteChanged();
-                OnPropertyChanged(nameof(IsComSettingsEditable));
-            }
-        }
-    }
-
     public bool IsComSettingsEditable => !IsRunning && !IsOpening;
 
-    public bool AreAllSentencesChecked
+    partial void OnIsTestSourceChanged(bool value)
     {
-        get => _areAllSentencesChecked;
-        set
+        if (value && IsIosSource)
         {
-            if (!SetProperty(ref _areAllSentencesChecked, value) || _isSynchronizingAllSentencesChecked)
-            {
-                return;
-            }
-
-            foreach (SentenceItem item in ConfigurableSentences())
-            {
-                item.IsEnabled = value;
-            }
+            IsIosSource = false;
         }
     }
 
-    public bool IsTestSource
+    partial void OnAreAllSentencesCheckedChanged(bool value)
     {
-        get => _isTestSource;
-        set
+        if (_isSynchronizingAllSentencesChecked)
         {
-            if (SetProperty(ref _isTestSource, value) && value)
-            {
-                IsIosSource = false;
-            }
+            return;
+        }
+
+        foreach (SentenceItem item in ConfigurableSentences())
+        {
+            item.IsEnabled = value;
         }
     }
 
-    public bool IsIosSource
+    partial void OnIsIosSourceChanged(bool value)
     {
-        get => _isIosSource;
-        set
+        if (value && IsTestSource)
         {
-            if (SetProperty(ref _isIosSource, value) && value)
-            {
-                IsTestSource = false;
-            }
+            IsTestSource = false;
         }
     }
 
-    public bool UseTrueWind
+    partial void OnUseTrueWindChanged(bool value)
     {
-        get => _useTrueWind;
-        set
+        GeneratePreview();
+    }
+
+    partial void OnUseUdpChanged(bool value)
+    {
+        GeneratePreview();
+        HandleUdpToggleDuringRun();
+    }
+
+    partial void OnDefaultPortChanged(string value)
+    {
+        string trimmed = (value ?? string.Empty).Trim();
+        if (!string.Equals(trimmed, value, StringComparison.Ordinal))
         {
-            if (SetProperty(ref _useTrueWind, value))
-            {
-                GeneratePreview();
-            }
+            DefaultPort = trimmed;
         }
     }
 
-    public bool UseUdp
+    partial void OnUdpPortTextChanged(string value)
     {
-        get => _useUdp;
-        set
+        string trimmed = (value ?? string.Empty).Trim();
+        if (!string.Equals(trimmed, value, StringComparison.Ordinal))
         {
-            if (SetProperty(ref _useUdp, value))
-            {
-                GeneratePreview();
-                HandleUdpToggleDuringRun();
-            }
+            UdpPortText = trimmed;
         }
-    }
-
-    public string Title
-    {
-        get => _title;
-        set => SetProperty(ref _title, value);
-    }
-
-    public string DefaultPort
-    {
-        get => _defaultPort;
-        set => SetProperty(ref _defaultPort, (value ?? string.Empty).Trim());
-    }
-
-    public string UdpPortText
-    {
-        get => _udpPortText;
-        set => SetProperty(ref _udpPortText, (value ?? string.Empty).Trim());
-    }
-
-    public string LongitudeText
-    {
-        get => _longitudeText;
-        set => SetProperty(ref _longitudeText, value);
-    }
-
-    public string LatitudeText
-    {
-        get => _latitudeText;
-        set => SetProperty(ref _latitudeText, value);
-    }
-
-    public string SpeedText
-    {
-        get => _speedText;
-        set => SetProperty(ref _speedText, value);
-    }
-
-    public string HeadingText
-    {
-        get => _headingText;
-        set => SetProperty(ref _headingText, value);
     }
 
     public void Dispose()
@@ -252,7 +200,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _sharedMemoryDataProvider.Dispose();
     }
 
-    private async void Start()
+    private bool CanStart()
+    {
+        return !IsRunning && !IsOpening;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanStart))]
+    private async Task Start()
     {
         if (IsOpening || IsRunning)
         {
@@ -360,6 +314,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    private bool CanStop()
+    {
+        return IsRunning;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanStop))]
     private void Stop()
     {
         _timer.Stop();
@@ -374,6 +334,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         IsRunning = false;
     }
 
+    [RelayCommand]
     private void Exit()
     {
         SaveConfig();
@@ -415,15 +376,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         foreach (string sentence in sentences)
         {
-            if (_serialPortHub.Write(item.PortName, sentence, out string? error)) // Send to COM port
+            if (_serialPortHub.Write(item.PortName, sentence, out string? error))
             {
-                if (item.Id == NmeaSentenceId.STR) // Don't log STR sentences to avoid log spam; they're for internal use only.
+                if (item.Id == NmeaSentenceId.STR)
                 {
-                    Debug.WriteLine($"{item.PortName} {sentence.TrimEnd()}"); // Write STR sentences to debug output instead of log.
+                    Debug.WriteLine($"{item.PortName} {sentence.TrimEnd()}");
                     continue;
                 }
 
-                AddLog($"{item.PortName} {sentence.TrimEnd()}"); // Log sent sentence
+                AddLog($"{item.PortName} {sentence.TrimEnd()}");
                 continue;
             }
 
@@ -527,6 +488,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         return false;
     }
 
+    [RelayCommand]
     private void SetData()
     {
         if (UpdateCurrentData(forceLog: true))
@@ -535,6 +497,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
     private void GetData()
     {
         if (IsIosSource)
@@ -555,24 +518,31 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
     private void ApplyDefaultPort()
     {
         foreach (SentenceItem item in AllSentences())
         {
-            // STR sentences are used internally only and use a fixed COM port.
-            // Settings can be changed in the ini file.
             if (item.Id == NmeaSentenceId.STR)
             {
                 continue;
             }
+
             item.PortName = DefaultPort;
         }
+
         SaveConfig();
     }
 
-    private void AddSentenceRow(object? parameter)
+    private bool CanAddSentenceRow(SentenceItem? source)
     {
-        if (parameter is not SentenceItem source)
+        return IsComSettingsEditable && source is not null;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanAddSentenceRow))]
+    private void AddSentenceRow(SentenceItem? source)
+    {
+        if (source is null)
         {
             return;
         }
@@ -584,9 +554,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void RemoveSentenceRow(object? parameter)
+    private bool CanRemoveSentenceRow(SentenceItem? parameter)
     {
-        if (parameter is not SentenceItem source || !source.IsDuplicateRow)
+        return IsComSettingsEditable && parameter is { IsDuplicateRow: true };
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRemoveSentenceRow))]
+    private void RemoveSentenceRow(SentenceItem? source)
+    {
+        if (source is not { IsDuplicateRow: true })
         {
             return;
         }
@@ -595,11 +571,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             SaveConfig();
         }
-    }
-
-    private bool CanRemoveSentenceRow(object? parameter)
-    {
-        return IsComSettingsEditable && parameter is SentenceItem { IsDuplicateRow: true };
     }
 
     private bool TryDuplicateSentenceRow(ObservableCollection<SentenceItem> collection, SentenceItem source)
@@ -663,6 +634,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
     private void ClearLog()
     {
         Logs.Clear();
@@ -674,6 +646,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             sentence.PropertyChanged -= Sentence_PropertyChanged;
         }
+
         _sentenceCatalog.Populate(
             GpsSentences,
             OtherSentences,
@@ -731,7 +704,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _config.Title = Title;
             _config.DefaultPort = DefaultPort;
             _config.TrueWind = UseTrueWind;
-            _config.UseHdmOutput = _useHdmOutput;
+            _config.UseHdmOutput = UseHdmOutput;
             _config.UseUdp = UseUdp;
             if (TryGetUdpPort(out int udpPort, out _))
             {
@@ -758,7 +731,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private NmeaBuildOptions CurrentBuildOptions()
     {
-        return new NmeaBuildOptions(UseTrueWind, _useHdmOutput);
+        return new NmeaBuildOptions(UseTrueWind, UseHdmOutput);
     }
 
     private ManualInputValues CurrentManualInput()
@@ -792,5 +765,5 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         return false;
     }
 
-    private sealed record PortOpenResult(string PortName, bool Success, string Error);
+    private sealed record PortOpenResult(string PortName, bool Success, string? Error);
 }

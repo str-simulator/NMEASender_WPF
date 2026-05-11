@@ -15,7 +15,7 @@
         WindowStartupLocation="CenterScreen"
         mc:Ignorable="d">
     <Window.Resources>
-        <DataTemplate x:Key="SentenceItemTemplate">
+        <DataTemplate x:Key="SentenceRowTemplate">
             <Grid Style="{StaticResource SentenceRowGridStyle}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"
@@ -364,7 +364,7 @@
                             </Grid>
                         </Border>
                         <ItemsControl Grid.Row="1"
-                                      ItemTemplate="{StaticResource SentenceItemTemplate}"
+                                      ItemTemplate="{StaticResource SentenceRowTemplate}"
                                       ItemsSource="{Binding GpsSentences}" />
                     </Grid>
                 </GroupBox>
@@ -419,7 +419,7 @@
                             <ScrollViewer.Resources>
                                 <Style BasedOn="{StaticResource LogScrollBarStyle}" TargetType="{x:Type ScrollBar}" />
                             </ScrollViewer.Resources>
-                            <ItemsControl ItemTemplate="{StaticResource SentenceItemTemplate}" ItemsSource="{Binding OtherSentences}" />
+                            <ItemsControl ItemTemplate="{StaticResource SentenceRowTemplate}" ItemsSource="{Binding OtherSentences}" />
                         </ScrollViewer>
                     </Grid>
                 </GroupBox>
