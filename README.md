@@ -27,6 +27,7 @@ COM Port / UDP Broadcast 전송을 지원하며, 문장 단위 제어와 실시�
 
 ## Architecture (MVVM)
 
+- Framework: CommunityToolkit.Mvvm
 - View: `MainWindow.xaml`
 - ViewModel: `MainViewModel`
 - Model: `NmeaDataDto`, `SentenceItem`, Native shared-memory models
