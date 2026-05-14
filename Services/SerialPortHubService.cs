@@ -1,20 +1,41 @@
 using System.IO.Ports;
 using System.Text;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
-public sealed class SerialPortHub : IDisposable
+public sealed class SerialPortHubService : ISerialPortHubService
 {
     private readonly Dictionary<string, SerialPort> _ports = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _baudRates = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
-    private int _baudRate = 19200;
+    private int _defaultBaudRate = 19200;
     private int _dataBits = 8;
     private Parity _parity = Parity.None;
     private StopBits _stopBits = StopBits.One;
 
-    public void Configure(int baudRate, int dataBits, Parity parity, StopBits stopBits)
+    public void Configure(
+        int defaultBaudRate,
+        IReadOnlyDictionary<string, int>? portBaudRates,
+        int dataBits,
+        Parity parity,
+        StopBits stopBits)
     {
-        _baudRate = baudRate;
+        _defaultBaudRate = defaultBaudRate > 0 ? defaultBaudRate : 19200;
+        _baudRates.Clear();
+        if (portBaudRates is not null)
+        {
+            foreach ((string portName, int baudRate) in portBaudRates)
+            {
+                if (string.IsNullOrWhiteSpace(portName) || baudRate <= 0)
+                {
+                    continue;
+                }
+
+                _baudRates[NormalizePortName(portName)] = baudRate;
+            }
+        }
+
         _dataBits = dataBits;
         _parity = parity;
         _stopBits = stopBits;
@@ -105,7 +126,11 @@ public sealed class SerialPortHub : IDisposable
 
     private SerialPort CreatePort(string portName)
     {
-        return new SerialPort(portName, _baudRate, _parity, _dataBits, _stopBits)
+        int baudRate = _baudRates.TryGetValue(portName, out int configuredBaudRate)
+            ? configuredBaudRate
+            : _defaultBaudRate;
+
+        return new SerialPort(portName, baudRate, _parity, _dataBits, _stopBits)
         {
             Encoding = Encoding.ASCII,
             NewLine = "\r\n",

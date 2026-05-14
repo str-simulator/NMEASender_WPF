@@ -1,13 +1,14 @@
 using System.Globalization;
 using NMEASender.Wpf.Models;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
 public readonly record struct ManualInputValues(string Longitude, string Latitude, string Speed, string Heading);
 
-public static class ManualInputMapper
+public sealed class ManualInputMapperService : IManualInputMapperService
 {
-    public static ManualInputValues ToInputValues(NmeaDataDto data)
+    public ManualInputValues ToInputValues(NmeaDataDto data)
     {
         return new ManualInputValues(
             data.Longitude.ToString("0.0000", CultureInfo.InvariantCulture),
@@ -16,7 +17,7 @@ public static class ManualInputMapper
             data.Heading.ToString("0.0", CultureInfo.InvariantCulture));
     }
 
-    public static NmeaDataDto ApplyToData(NmeaDataDto baseData, ManualInputValues input)
+    public NmeaDataDto ApplyToData(NmeaDataDto baseData, ManualInputValues input)
     {
         NmeaDataDto data = baseData.Clone();
         data.Time = DateTime.Now;

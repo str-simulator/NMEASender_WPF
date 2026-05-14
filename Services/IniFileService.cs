@@ -1,14 +1,15 @@
 using System.IO;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
-public sealed class IniFile
+public sealed class IniFileService : IIniFileService
 {
     private readonly Dictionary<string, Dictionary<string, string>> _sections = new(StringComparer.OrdinalIgnoreCase);
 
-    public static IniFile Load(string path)
+    public static IniFileService Load(string path)
     {
-        var ini = new IniFile();
+        var ini = new IniFileService();
         if (!File.Exists(path))
         {
             return ini;
@@ -73,15 +74,30 @@ public sealed class IniFile
         GetSection(section)[key] = value;
     }
 
-    public void MergeFrom(IniFile other)
+    public void MergeFrom(IIniFileService other)
     {
-        foreach (var (sectionName, section) in other._sections)
+        if (other is not IniFileService source)
+        {
+            throw new ArgumentException("Unsupported INI implementation.", nameof(other));
+        }
+
+        foreach (var (sectionName, section) in source._sections)
         {
             foreach (var (key, value) in section)
             {
                 Set(sectionName, key, value);
             }
         }
+    }
+
+    public IReadOnlyDictionary<string, string> GetSectionValues(string section)
+    {
+        if (_sections.TryGetValue(section, out Dictionary<string, string>? values))
+        {
+            return new Dictionary<string, string>(values, StringComparer.OrdinalIgnoreCase);
+        }
+
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
     public void Save(string path)

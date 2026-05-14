@@ -1,11 +1,18 @@
 using NMEASender.Wpf.Models;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
-public sealed class SentenceComposerService
+public sealed class SentenceComposerService : ISentenceComposerService
 {
+    private readonly INmeaSentenceBuilderService _sentenceBuilder;
     private double _lastVtgKnots;
     private double _lastVtgKmh;
+
+    public SentenceComposerService(INmeaSentenceBuilderService sentenceBuilder)
+    {
+        _sentenceBuilder = sentenceBuilder ?? throw new ArgumentNullException(nameof(sentenceBuilder));
+    }
 
     public IReadOnlyList<string> ComposeAndApplyPreview(
         SentenceItem item,
@@ -21,13 +28,13 @@ public sealed class SentenceComposerService
             return new[] { sentence };
         }
 
-        IReadOnlyList<string> sentences = NmeaSentenceBuilder.Build(item.Id, data, options);
+        IReadOnlyList<string> sentences = _sentenceBuilder.Build(item.Id, data, options);
         item.PrimaryText = sentences.Count > 0 ? sentences[0].TrimEnd() : string.Empty;
         item.SecondaryText = sentences.Count > 1 ? sentences[1].TrimEnd() : string.Empty;
         return sentences;
     }
 
-    public static bool ShouldSend(SentenceItem item, bool isIosSource, NmeaDataDto data)
+    public bool ShouldSend(SentenceItem item, bool isIosSource, NmeaDataDto data)
     {
         if (!isIosSource)
         {
@@ -61,6 +68,6 @@ public sealed class SentenceComposerService
             waterKmh = _lastVtgKmh;
         }
 
-        return NmeaSentenceBuilder.BuildVtgSentence(data.GyroHeading, data.MagneticVariation, waterKnots, waterKmh);
+        return _sentenceBuilder.BuildVtgSentence(data.GyroHeading, data.MagneticVariation, waterKnots, waterKmh);
     }
 }

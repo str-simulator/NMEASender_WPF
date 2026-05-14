@@ -1,15 +1,17 @@
 using System.IO;
 using System.IO.Ports;
 using NMEASender.Wpf.Models;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
-public sealed class NmeaSenderConfig
+public sealed class NmeaSenderConfigService : INmeaSenderConfigService
 {
     private const string GpsSection = "GPS CONFIG";
     private const string ConfigSection = "CONFIG";
     private const string SocketSection = "SOCKET";
-    private const string WpfPortsSection = "WPF SENTENCE PORTS";
+    private const string PortsSection = "SENTENCE PORTS";
+    private const string BaudSection = "BAUD RATE";
 
     public string Title { get; set; } = "ECDIS Sender";
     public string DefaultPort { get; set; } = "COM1";
@@ -26,6 +28,7 @@ public sealed class NmeaSenderConfig
     public NmeaSendFlag SendFlag { get; set; } = DefaultSendFlag;
     public Dictionary<NmeaSentenceId, string> SentencePorts { get; } = new();
     public Dictionary<NmeaSentenceId, List<string>> SentencePortRows { get; } = new();
+    public Dictionary<string, int> PortBaudRates { get; } = new(StringComparer.OrdinalIgnoreCase);
     public string SavePath { get; set; } = Path.Combine(AppContext.BaseDirectory, "NMEASender.Wpf.ini");
 
     public static NmeaSendFlag DefaultSendFlag =>
@@ -35,24 +38,24 @@ public sealed class NmeaSenderConfig
         NmeaSendFlag.Etl | NmeaSendFlag.Cur | NmeaSendFlag.Mda | NmeaSendFlag.Trc | NmeaSendFlag.Trd |
         NmeaSendFlag.Hpm | NmeaSendFlag.Hrm | NmeaSendFlag.Vdo;
 
-    public static NmeaSenderConfig Load()
+    public static NmeaSenderConfigService Load()
     {
         string? basePath = FindUpwards("NMEASender.ini");
         string? savePath = basePath is null
             ? Path.Combine(AppContext.BaseDirectory, "NMEASender.Wpf.ini")
             : Path.Combine(Path.GetDirectoryName(basePath)!, "NMEASender.Wpf.ini");
 
-        IniFile ini = basePath is null ? new IniFile() : IniFile.Load(basePath);
+        IIniFileService ini = basePath is null ? new IniFileService() : IniFileService.Load(basePath);
         if (File.Exists(savePath))
         {
-            ini.MergeFrom(IniFile.Load(savePath));
+            ini.MergeFrom(IniFileService.Load(savePath));
         }
 
         const string missing = "__MISSING__";
-        string legacyRpmPort = ini.Get(WpfPortsSection, "RPM", missing);
+        string legacyRpmPort = ini.Get(PortsSection, "RPM", missing);
         bool hasLegacyRpmPort = legacyRpmPort != missing;
-        bool hasRpmPortKey = ini.Get(WpfPortsSection, nameof(NmeaSentenceId.RpmPort).ToUpperInvariant(), missing) != missing;
-        bool hasRpmStbdKey = ini.Get(WpfPortsSection, nameof(NmeaSentenceId.RpmStbd).ToUpperInvariant(), missing) != missing;
+        bool hasRpmPortKey = ini.Get(PortsSection, nameof(NmeaSentenceId.RpmPort).ToUpperInvariant(), missing) != missing;
+        bool hasRpmStbdKey = ini.Get(PortsSection, nameof(NmeaSentenceId.RpmStbd).ToUpperInvariant(), missing) != missing;
         bool legacyRpmLayout = hasLegacyRpmPort && !hasRpmPortKey && !hasRpmStbdKey;
         uint rawSendFlag = ini.GetUInt(GpsSection, "SEND FLAG", (uint)DefaultSendFlag);
         NmeaSendFlag sendFlag = (NmeaSendFlag)rawSendFlag;
@@ -62,7 +65,7 @@ public sealed class NmeaSenderConfig
         }
 
         int portNo = ini.GetInt(GpsSection, "PORT NO", 1);
-        NmeaSenderConfig config = new NmeaSenderConfig
+        NmeaSenderConfigService config = new NmeaSenderConfigService
         {
             SavePath = savePath,
             Title = ini.Get(ConfigSection, "TITLE", "ECDIS Sender"),
@@ -88,9 +91,17 @@ public sealed class NmeaSenderConfig
                 _ => config.DefaultPort
             };
             string key = id.ToString().ToUpperInvariant();
-            List<string> ports = LoadSentencePorts(ini, WpfPortsSection, key, defaultPort);
+            List<string> ports = LoadSentencePorts(ini, PortsSection, key, defaultPort);
             config.SentencePorts[id] = ports[0];
             config.SentencePortRows[id] = ports;
+        }
+
+        foreach ((string portName, string baudText) in ini.GetSectionValues(BaudSection))
+        {
+            if (TryParseBaudRate(baudText, out int baudRate))
+            {
+                config.PortBaudRates[NormalizePortName(portName)] = baudRate;
+            }
         }
 
         return config;
@@ -98,7 +109,7 @@ public sealed class NmeaSenderConfig
 
     public void Save(IEnumerable<SentenceItem> items)
     {
-        IniFile ini = new IniFile();
+        IniFileService ini = new IniFileService();
         ini.Set(ConfigSection, "TITLE", Title);
         ini.Set(GpsSection, "PORT NO", PortNumber(DefaultPort).ToString());
         ini.Set(GpsSection, "BAUD RATE", BaudRate.ToString());
@@ -114,14 +125,29 @@ public sealed class NmeaSenderConfig
         ini.Set(SocketSection, "USE UDP", UseUdp ? "1" : "0");
         ini.Set(SocketSection, "SEND PORT", NormalizeUdpPort(UdpPort).ToString());
 
+        foreach ((string portName, int baudRate) in PortBaudRates.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(portName))
+            {
+                continue;
+            }
+
+            ini.Set(BaudSection, NormalizePortName(portName), NormalizeBaudRate(baudRate).ToString());
+        }
+
         foreach (IGrouping<NmeaSentenceId, SentenceItem> group in items.GroupBy(item => item.Id))
         {
             string key = group.Key.ToString().ToUpperInvariant();
             int index = 1;
             foreach (SentenceItem item in group)
             {
+                if (item.Id == NmeaSentenceId.STR)
+                {
+                    continue; // STR sentences are only sent to ECDIS
+                }
+
                 string? rowKey = index == 1 ? key : $"{key}#{index}";
-                ini.Set(WpfPortsSection, rowKey, item.PortName);
+                ini.Set(PortsSection, rowKey, item.PortName);
                 index++;
             }
         }
@@ -156,7 +182,7 @@ public sealed class NmeaSenderConfig
         return File.Exists(currentDirectoryCandidate) ? currentDirectoryCandidate : null;
     }
 
-    private static List<string> LoadSentencePorts(IniFile ini, string section, string key, string defaultPort)
+    private static List<string> LoadSentencePorts(IIniFileService ini, string section, string key, string defaultPort)
     {
         const string missing = "__MISSING__";
         List<string> ports = new List<string>();
@@ -186,6 +212,28 @@ public sealed class NmeaSenderConfig
     private static int NormalizeUdpPort(int port)
     {
         return port is >= 1 and <= 65535 ? port : 40014;
+    }
+
+    private static bool TryParseBaudRate(string value, out int baudRate)
+    {
+        if (int.TryParse(value, out int parsed) && parsed > 0)
+        {
+            baudRate = parsed;
+            return true;
+        }
+
+        baudRate = 0;
+        return false;
+    }
+
+    private static int NormalizeBaudRate(int baudRate)
+    {
+        return baudRate > 0 ? baudRate : 19200;
+    }
+
+    private static string NormalizePortName(string portName)
+    {
+        return (portName ?? string.Empty).Trim().ToUpperInvariant();
     }
 
     private static StopBits MapStopBits(int value)

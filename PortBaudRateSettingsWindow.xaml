@@ -1,0 +1,83 @@
+﻿<Window x:Class="NMEASender.Wpf.PortBaudRateSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings"
+        Width="420"
+        Height="520"
+        MinWidth="380"
+        MinHeight="420"
+        ResizeMode="CanResize"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock FontSize="16"
+                       FontWeight="SemiBold"
+                       Text="COM Port BaudRate Settings" />
+            <TextBlock Margin="0,6,0,0"
+                       Foreground="#5F6B84"
+                       Text="Select the baud rate for each COM port." />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Padding="10"
+                Background="#F9FBFF"
+                BorderBrush="#D8DEE9"
+                BorderThickness="1"
+                CornerRadius="8">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding PortBaudRates}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="140" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock VerticalAlignment="Center"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding PortName}" />
+                                <ComboBox Grid.Column="1"
+                                          Margin="8,0,0,0"
+                                          VerticalAlignment="Center"
+                                          ItemsSource="{Binding DataContext.BaudRateOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          SelectedItem="{Binding BaudRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Margin="0,0,8,0"
+                       VerticalAlignment="Center"
+                       Foreground="#C62828"
+                       Text="{Binding ValidationMessage}" />
+            <Button Grid.Column="1"
+                    Width="90"
+                    Margin="0,0,8,0"
+                    Command="{Binding CancelCommand}"
+                    Content="Cancel" />
+            <Button Grid.Column="2"
+                    Width="90"
+                    Command="{Binding SaveCommand}"
+                    Content="Save" />
+        </Grid>
+    </Grid>
+</Window>

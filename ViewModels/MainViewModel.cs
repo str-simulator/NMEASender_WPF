@@ -2,25 +2,28 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
-using System.Windows;
 using System.Windows.Threading;
 using NMEASender.Wpf.Models;
 using NMEASender.Wpf.Services;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.ViewModels;
 
 public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly DispatcherTimer _timer;
-    private readonly SerialPortHub _serialPortHub;
-    private readonly UdpBroadcastSender _udpSender;
-    private readonly SharedMemoryNmeaDataProvider _sharedMemoryDataProvider;
-    private readonly SentenceComposerService _sentenceComposer;
-    private readonly SentenceCatalogService _sentenceCatalog;
-    private readonly NmeaSenderConfig _config;
-    private readonly HashSet<string> _openPorts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IOutputChannelService _outputChannelService;
+    private readonly IPortBaudRateService _portBaudRateService;
+    private readonly INmeaTransmissionService _nmeaTransmissionService;
+    private readonly ISharedMemoryProviderService _sharedMemoryDataProvider;
+    private readonly ISentenceComposerService _sentenceComposer;
+    private readonly ISentenceCatalogService _sentenceCatalog;
+    private readonly ISerialPortCatalogService _serialPortCatalogService;
+    private readonly IBaudRateSettingService _portBaudRateSettingsDialogService;
+    private readonly IApplicationLifecycleService _applicationLifecycleService;
+    private readonly IManualInputMapperService _manualInputMapperService;
+    private readonly INmeaSenderConfigService _config;
     private bool _sharedMemoryWarningLogged;
 
     [ObservableProperty]
@@ -80,30 +83,29 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private NmeaDataDto _data = new();
 
-    public MainViewModel()
-        : this(
-            new SerialPortHub(),
-            new UdpBroadcastSender(),
-            new SharedMemoryNmeaDataProvider(),
-            new SentenceComposerService(),
-            new SentenceCatalogService(),
-            NmeaSenderConfig.Load())
-    {
-    }
-
     public MainViewModel(
-        SerialPortHub serialPortHub,
-        UdpBroadcastSender udpSender,
-        SharedMemoryNmeaDataProvider sharedMemoryDataProvider,
-        SentenceComposerService sentenceComposer,
-        SentenceCatalogService sentenceCatalog,
-        NmeaSenderConfig config)
+        IOutputChannelService outputChannelService,
+        IPortBaudRateService portBaudRateService,
+        INmeaTransmissionService nmeaTransmissionService,
+        ISharedMemoryProviderService sharedMemoryDataProvider,
+        ISentenceComposerService sentenceComposer,
+        ISentenceCatalogService sentenceCatalog,
+        ISerialPortCatalogService serialPortCatalogService,
+        IBaudRateSettingService portBaudRateSettingsDialogService,
+        IApplicationLifecycleService applicationLifecycleService,
+        IManualInputMapperService manualInputMapperService,
+        INmeaSenderConfigService config)
     {
-        _serialPortHub = serialPortHub ?? throw new ArgumentNullException(nameof(serialPortHub));
-        _udpSender = udpSender ?? throw new ArgumentNullException(nameof(udpSender));
+        _outputChannelService = outputChannelService ?? throw new ArgumentNullException(nameof(outputChannelService));
+        _portBaudRateService = portBaudRateService ?? throw new ArgumentNullException(nameof(portBaudRateService));
+        _nmeaTransmissionService = nmeaTransmissionService ?? throw new ArgumentNullException(nameof(nmeaTransmissionService));
         _sharedMemoryDataProvider = sharedMemoryDataProvider ?? throw new ArgumentNullException(nameof(sharedMemoryDataProvider));
         _sentenceComposer = sentenceComposer ?? throw new ArgumentNullException(nameof(sentenceComposer));
         _sentenceCatalog = sentenceCatalog ?? throw new ArgumentNullException(nameof(sentenceCatalog));
+        _serialPortCatalogService = serialPortCatalogService ?? throw new ArgumentNullException(nameof(serialPortCatalogService));
+        _portBaudRateSettingsDialogService = portBaudRateSettingsDialogService ?? throw new ArgumentNullException(nameof(portBaudRateSettingsDialogService));
+        _applicationLifecycleService = applicationLifecycleService ?? throw new ArgumentNullException(nameof(applicationLifecycleService));
+        _manualInputMapperService = manualInputMapperService ?? throw new ArgumentNullException(nameof(manualInputMapperService));
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _title = _config.Title;
         _defaultPort = _config.DefaultPort;
@@ -133,6 +135,30 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly List<SentenceItem> _internalSentences = new();
 
     public bool IsComSettingsEditable => !IsRunning && !IsOpening;
+
+    public IReadOnlyList<int> BaudRateOptions => _portBaudRateService.BaudRateOptions;
+
+    private IReadOnlyDictionary<string, int> GetPortBaudRatesSnapshot()
+    {
+        IEnumerable<string> sentencePorts = AllSentences().Select(item => item.PortName);
+        return _portBaudRateService.CreateSnapshot(_config, Ports, sentencePorts, DefaultPort);
+    }
+
+    private bool TryApplyPortBaudRates(IReadOnlyDictionary<string, int> portBaudRates, out string error)
+    {
+        if (!_portBaudRateService.TryApply(_config, portBaudRates, out error))
+        {
+            return false;
+        }
+
+        SaveConfig();
+        if (IsRunning)
+        {
+            AddLog("Baud rate settings saved. Restart START to apply.");
+        }
+
+        return true;
+    }
 
     partial void OnIsTestSourceChanged(bool value)
     {
@@ -195,8 +221,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         Stop();
-        _serialPortHub.Dispose();
-        _udpSender.Dispose();
+        _outputChannelService.Dispose();
         _sharedMemoryDataProvider.Dispose();
     }
 
@@ -229,10 +254,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
 
             RefreshPorts();
-            _serialPortHub.CloseAll();
-            _udpSender.Close();
-            _openPorts.Clear();
-            _serialPortHub.Configure(_config.BaudRate, _config.DataBits, _config.Parity, _config.StopBits);
 
             List<string> enabledPorts = AllSentences()
                 .Where(item => item.IsEnabled)
@@ -247,56 +268,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            if (enabledPorts.Count > 0)
-            {
-                AddLog($"Opening {enabledPorts.Count} COM port(s)...");
-                List<PortOpenResult> openResults = await Task.Run(() => enabledPorts
-                    .Select(portName =>
-                    {
-                        bool success = _serialPortHub.Open(portName, out string? error);
-                        return new PortOpenResult(portName, success, error);
-                    })
-                    .ToList());
+            TransmissionStartContext startContext = new(
+                _config,
+                enabledPorts,
+                UseUdp,
+                udpPort,
+                IsIosSource);
 
-                foreach (PortOpenResult result in openResults)
-                {
-                    if (result.Success)
-                    {
-                        _openPorts.Add(result.PortName);
-                        AddLog($"{result.PortName} Open Success");
-                    }
-                    else
-                    {
-                        AddLog($"{result.PortName} Open Fail: {result.Error}");
-                    }
-                }
-            }
-            else
+            if (!await _nmeaTransmissionService.StartAsync(startContext, AddLog))
             {
-                AddLog("No COM port selected; UDP only");
-            }
-
-            if (UseUdp)
-            {
-                if (_udpSender.Open(udpPort, out string? udpError))
-                {
-                    AddLog($"UDP Broadcast Open: {udpPort}");
-                }
-                else
-                {
-                    AddLog($"UDP Broadcast Open Fail: {udpError}");
-                }
-            }
-
-            if (_openPorts.Count == 0 && !_udpSender.IsOpen)
-            {
-                AddLog("Send stopped: no output opened.");
                 return;
             }
-
-            AddLog(IsIosSource
-                ? "By IOS selected: reading STR_OWNSHIP_DATA"
-                : "TEST selected: current input values are used");
 
             SaveConfig();
             IsRunning = true;
@@ -323,14 +305,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void Stop()
     {
         _timer.Stop();
-        _serialPortHub.CloseAll();
-        _udpSender.Close();
-        _openPorts.Clear();
-        if (IsRunning)
-        {
-            AddLog("COM Close");
-        }
-
+        _nmeaTransmissionService.Stop(IsRunning, AddLog);
         IsRunning = false;
     }
 
@@ -338,7 +313,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void Exit()
     {
         SaveConfig();
-        Application.Current.MainWindow?.Close();
+        _applicationLifecycleService.RequestShutdown();
+    }
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        RefreshPorts();
+        IReadOnlyDictionary<string, int> currentPortBaudRates = GetPortBaudRatesSnapshot();
+        if (!_portBaudRateSettingsDialogService.TryShow(currentPortBaudRates, BaudRateOptions, out IReadOnlyDictionary<string, int> updatedPortBaudRates))
+        {
+            return;
+        }
+
+        if (!TryApplyPortBaudRates(updatedPortBaudRates, out string error))
+        {
+            AddLog($"Baud rate setting failed: {error}");
+        }
     }
 
     private void SendTick()
@@ -348,125 +339,36 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        foreach (SentenceItem item in AllSentences().Where(item => item.IsEnabled))
-        {
-            if (!SentenceComposerService.ShouldSend(item, IsIosSource, _data))
-            {
-                continue;
-            }
+        List<SentenceItem> enabledSentences = AllSentences().Where(item => item.IsEnabled).ToList();
+        TransmissionTickContext tickContext = new(
+            enabledSentences,
+            _data,
+            IsIosSource,
+            CurrentBuildOptions(),
+            UdpPortText);
 
-            IReadOnlyList<string> sentences = _sentenceComposer.ComposeAndApplyPreview(item, _data, IsIosSource, CurrentBuildOptions());
-            if (!string.IsNullOrWhiteSpace(item.PortName) && _openPorts.Contains(item.PortName))
-            {
-                SendToCom(item, sentences);
-            }
-            else if (!_udpSender.IsOpen && string.IsNullOrWhiteSpace(item.PortName))
-            {
-                AddLog($"{item.Label} COM not selected");
-            }
-
-            if (_udpSender.IsOpen)
-            {
-                SendToUdp(item, sentences);
-            }
-        }
-    }
-
-    private void SendToCom(SentenceItem item, IReadOnlyList<string> sentences)
-    {
-        foreach (string sentence in sentences)
-        {
-            if (_serialPortHub.Write(item.PortName, sentence, out string? error))
-            {
-                if (item.Id == NmeaSentenceId.STR)
-                {
-                    Debug.WriteLine($"{item.PortName} {sentence.TrimEnd()}");
-                    continue;
-                }
-
-                AddLog($"{item.PortName} {sentence.TrimEnd()}");
-                continue;
-            }
-
-            AddLog($"{item.PortName} {item.Label} Send Fail: {error}");
-            _openPorts.Remove(item.PortName);
-            AddLog($"{item.PortName} disabled for this run.");
-            StopIfNoOutputIsOpen();
-            break;
-        }
-    }
-
-    private void SendToUdp(SentenceItem item, IReadOnlyList<string> sentences)
-    {
-        foreach (string sentence in sentences)
-        {
-            if (_udpSender.Send(sentence, out string? error))
-            {
-                AddLog($"UDP:{UdpPortText} {sentence.TrimEnd()}");
-                continue;
-            }
-
-            AddLog($"UDP:{UdpPortText} {item.Label} Send Fail: {error}");
-            _udpSender.Close();
-            StopIfNoOutputIsOpen();
-            break;
-        }
+        _nmeaTransmissionService.DispatchTick(tickContext, AddLog, Stop);
     }
 
     private void HandleUdpToggleDuringRun()
     {
-        if (!IsRunning || IsOpening)
-        {
-            return;
-        }
-
-        if (!UseUdp)
-        {
-            if (_udpSender.IsOpen)
-            {
-                _udpSender.Close();
-                AddLog("UDP Broadcast Close");
-            }
-
-            return;
-        }
-
-        if (_udpSender.IsOpen)
-        {
-            return;
-        }
-
         if (!TryGetUdpPort(out int udpPort, out string? udpPortError))
         {
-            AddLog(udpPortError);
+            if (UseUdp)
+            {
+                AddLog(udpPortError);
+            }
             return;
         }
 
-        if (_udpSender.Open(udpPort, out string? udpError))
-        {
-            AddLog($"UDP Broadcast Open: {udpPort}");
-            return;
-        }
-
-        AddLog($"UDP Broadcast Open Fail: {udpError}");
-    }
-
-    private void StopIfNoOutputIsOpen()
-    {
-        if (_openPorts.Count > 0 || _udpSender.IsOpen)
-        {
-            return;
-        }
-
-        AddLog("Send stopped: all outputs are closed.");
-        Stop();
+        _nmeaTransmissionService.HandleUdpToggleDuringRun(IsRunning, IsOpening, UseUdp, udpPort, AddLog);
     }
 
     private bool UpdateCurrentData(bool forceLog = false)
     {
         if (!IsIosSource)
         {
-            _data = ManualInputMapper.ApplyToData(_data, CurrentManualInput());
+            _data = _manualInputMapperService.ApplyToData(_data, CurrentManualInput());
             _sharedMemoryWarningLogged = false;
             return true;
         }
@@ -475,7 +377,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             _data = data;
             _sharedMemoryWarningLogged = false;
-            ApplyManualInput(ManualInputMapper.ToInputValues(_data));
+            ApplyManualInput(_manualInputMapperService.ToInputValues(_data));
             return true;
         }
 
@@ -505,7 +407,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             UpdateCurrentData(forceLog: true);
         }
 
-        ApplyManualInput(ManualInputMapper.ToInputValues(_data));
+        ApplyManualInput(_manualInputMapperService.ToInputValues(_data));
         GeneratePreview();
     }
 
@@ -611,11 +513,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         };
     }
 
-    public void RefreshPorts()
+    [RelayCommand]
+    private void RefreshPorts()
     {
         string previousDefault = string.IsNullOrWhiteSpace(DefaultPort) ? _config.DefaultPort : DefaultPort;
         Dictionary<SentenceItem, string> previousSentencePorts = AllSentences().ToDictionary(item => item, item => item.PortName);
-        IReadOnlyList<string> names = SerialPortCatalogService.GetSortedPorts(out string? portScanError);
+        IReadOnlyList<string> names = _serialPortCatalogService.GetSortedPorts(out string? portScanError);
         if (!string.IsNullOrWhiteSpace(portScanError))
         {
             AddLog($"COM scan failed: {portScanError}");
@@ -627,10 +530,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             Ports.Add(port);
         }
 
-        DefaultPort = SerialPortCatalogService.PickAvailablePort(Ports, previousDefault, _config.DefaultPort);
+        DefaultPort = _serialPortCatalogService.PickAvailablePort(Ports, previousDefault, _config.DefaultPort);
         foreach (var (item, portName) in previousSentencePorts)
         {
-            item.PortName = SerialPortCatalogService.PickAvailablePort(Ports, portName, DefaultPort);
+            item.PortName = _serialPortCatalogService.PickAvailablePort(Ports, portName, DefaultPort);
         }
     }
 
@@ -652,7 +555,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             OtherSentences,
             _internalSentences,
             _config,
-            port => SerialPortCatalogService.PickAvailablePort(Ports, port, DefaultPort));
+            port => _serialPortCatalogService.PickAvailablePort(Ports, port, DefaultPort));
 
         foreach (SentenceItem sentence in ConfigurableSentences())
         {
@@ -719,6 +622,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    private int ResolveBaudRate(string portName)
+    {
+        return _portBaudRateService.ResolveBaudRate(_config, portName);
+    }
+
     private void AddLog(string message)
     {
         if (Logs.Count > 1000)
@@ -765,5 +673,4 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return false;
     }
 
-    private sealed record PortOpenResult(string PortName, bool Success, string? Error);
 }

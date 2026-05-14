@@ -1,8 +1,9 @@
 using NMEASender.Wpf.Models;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
-public sealed class SentenceCatalogService
+public sealed class SentenceCatalogService : ISentenceCatalogService
 {
     private static readonly SentenceTemplate[] GpsTemplates =
     [
@@ -45,7 +46,7 @@ public sealed class SentenceCatalogService
         ICollection<SentenceItem> gpsSentences,
         ICollection<SentenceItem> otherSentences,
         ICollection<SentenceItem> internalSentences,
-        NmeaSenderConfig config,
+        INmeaSenderConfigService config,
         Func<string, string> pickAvailablePort)
     {
         gpsSentences.Clear();
@@ -60,7 +61,7 @@ public sealed class SentenceCatalogService
     private static void AddTemplates(
         ICollection<SentenceItem> target,
         IEnumerable<SentenceTemplate> templates,
-        NmeaSenderConfig config,
+        INmeaSenderConfigService config,
         Func<string, string> pickAvailablePort)
     {
         foreach (SentenceTemplate template in templates)

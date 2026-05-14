@@ -1,16 +1,17 @@
 ﻿using System.Globalization;
 using NMEASender.Wpf.Models;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
 public sealed record NmeaBuildOptions(bool TrueWind, bool UseHdmOutput = true);
 
-public static class NmeaSentenceBuilder
+public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
 {
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
     private const double CppKnotsDivisor = 0.515;
 
-    public static IReadOnlyList<string> Build(NmeaSentenceId id, NmeaDataDto data, NmeaBuildOptions options)
+    public IReadOnlyList<string> Build(NmeaSentenceId id, NmeaDataDto data, NmeaBuildOptions options)
     {
         data.Time = data.Time == default ? DateTime.Now : data.Time;
         DerivedData derived = DerivedData.From(data);
@@ -46,18 +47,12 @@ public static class NmeaSentenceBuilder
         };
     }
 
-    public static byte Checksum(string body)
+    public byte Checksum(string body)
     {
-        byte checksum = 0;
-        foreach (char ch in body)
-        {
-            checksum ^= (byte)ch;
-        }
-
-        return checksum;
+        return ComputeChecksum(body);
     }
 
-    public static string BuildVtgSentence(double gyroHeading, double magneticVariation, double waterSpeedKnots, double waterSpeedKmh)
+    public string BuildVtgSentence(double gyroHeading, double magneticVariation, double waterSpeedKnots, double waterSpeedKmh)
     {
         double magneticHeading = NormalizeDegrees(gyroHeading + magneticVariation);
         string body = string.Create(
@@ -151,10 +146,15 @@ public static class NmeaSentenceBuilder
 
     private static string Vbw(DerivedData derived)
     {
-        string? body = string.Create(
+        //string? body = string.Create(
+        //    Invariant,
+        //    $"--VBW,{derived.WaterLongitudinalKnots:0.0},{derived.WaterLateralKnots:0.0},V,{derived.LongitudinalKnots:0.0},{derived.LateralKnots:0.0},A");
+
+        string? bodyTCS = string.Create( // TCS (삼성중공업 납품에서는 Sentence 시작 `IN`)
             Invariant,
-            $"--VBW,{derived.WaterLongitudinalKnots:0.0},{derived.WaterLateralKnots:0.0},V,{derived.LongitudinalKnots:0.0},{derived.LateralKnots:0.0},A");
-        return Full(body);
+            $"INVBW,{derived.WaterLongitudinalKnots:0.0},{derived.WaterLateralKnots:0.0},A,{derived.LongitudinalKnots:0.0},{derived.LateralKnots:0.0},A");
+        //return Full(body);
+        return Full(bodyTCS);
     }
 
     private static string Rot(NmeaDataDto data)
@@ -331,7 +331,7 @@ public static class NmeaSentenceBuilder
     private static string Full(string body, bool ais = false)
     {
         string prefix = ais ? "!" : "$";
-        return string.Create(Invariant, $"{prefix}{body}*{Checksum(body):X2}\r\n");
+        return string.Create(Invariant, $"{prefix}{body}*{ComputeChecksum(body):X2}\r\n");
     }
 
     private static IReadOnlyList<string> One(string value)
@@ -496,6 +496,17 @@ public static class NmeaSentenceBuilder
                double.IsFinite(longitude) &&
                Math.Abs(latitude) <= 90.0 &&
                Math.Abs(longitude) <= 180.0;
+    }
+
+    private static byte ComputeChecksum(string body)
+    {
+        byte checksum = 0;
+        foreach (char ch in body)
+        {
+            checksum ^= (byte)ch;
+        }
+
+        return checksum;
     }
 
     private sealed class DerivedData

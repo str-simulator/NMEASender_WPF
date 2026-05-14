@@ -3,10 +3,11 @@ using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Text;
 using NMEASender.Wpf.Models;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
-public sealed class SharedMemoryNmeaDataProvider : IDisposable
+public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
 {
     private const string OwnShipMapName = "STR_OWNSHIP_DATA";
     private MemoryMappedFile? _ownShipMemory;

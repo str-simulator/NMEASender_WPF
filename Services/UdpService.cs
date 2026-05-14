@@ -1,10 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
-public sealed class UdpBroadcastSender : IDisposable
+public sealed class UdpService : IUdpService
 {
     private readonly UdpClient _client = new(AddressFamily.InterNetwork);
     private IPEndPoint? _endPoint;

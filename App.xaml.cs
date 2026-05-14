@@ -1,6 +1,7 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using NMEASender.Wpf.Services;
+using NMEASender.Wpf.Services.Interfaces;
 using NMEASender.Wpf.ViewModels;
 
 namespace NMEASender.Wpf;
@@ -18,16 +19,24 @@ public partial class App : Application
     {
         ServiceCollection services = new();
 
-        services.AddSingleton(_ => NmeaSenderConfig.Load());
+        services.AddSingleton<INmeaSenderConfigService>(_ => NmeaSenderConfigService.Load());
 
-        services.AddSingleton<SerialPortHub>();
-        services.AddSingleton<UdpBroadcastSender>();
-        services.AddSingleton<SharedMemoryNmeaDataProvider>();
-        services.AddSingleton<SentenceComposerService>();
-        services.AddSingleton<SentenceCatalogService>();
+        services.AddSingleton<ISerialPortHubService, SerialPortHubService>();
+        services.AddSingleton<IUdpService, UdpService>();
+        services.AddSingleton<INmeaSentenceBuilderService, NmeaSentenceBuilderService>();
+        services.AddSingleton<IManualInputMapperService, ManualInputMapperService>();
+        services.AddSingleton<IOutputChannelService, OutputChannelService>();
+        services.AddSingleton<IPortBaudRateService, PortBaudRateService>();
+        services.AddSingleton<INmeaTransmissionService, NmeaTransmissionService>();
+        services.AddSingleton<ISharedMemoryProviderService, SharedMemoryProviderService>();
+        services.AddSingleton<ISentenceComposerService, SentenceComposerService>();
+        services.AddSingleton<ISentenceCatalogService, SentenceCatalogService>();
+        services.AddSingleton<ISerialPortCatalogService, SerialPortCatalogService>();
+        services.AddSingleton<IBaudRateSettingService, BaudRateSettingService>();
+        services.AddSingleton<IApplicationLifecycleService, ApplicationLifecycleService>();
 
-        services.AddSingleton<MainViewModel>();
-        services.AddSingleton<MainWindow>();
+        services.AddTransient<MainViewModel>();
+        services.AddTransient<MainWindow>();
 
         return services.BuildServiceProvider();
     }

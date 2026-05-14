@@ -1,10 +1,11 @@
+using NMEASender.Wpf.Services.Interfaces;
 using System.IO.Ports;
 
 namespace NMEASender.Wpf.Services;
 
-public static class SerialPortCatalogService
+public sealed class SerialPortCatalogService : ISerialPortCatalogService
 {
-    public static IReadOnlyList<string> GetSortedPorts(out string error)
+    public IReadOnlyList<string> GetSortedPorts(out string error)
     {
         error = string.Empty;
         try
@@ -23,7 +24,7 @@ public static class SerialPortCatalogService
         }
     }
 
-    public static string PickAvailablePort(IEnumerable<string> availablePorts, string requestedPort, string defaultPort)
+    public string PickAvailablePort(IEnumerable<string> availablePorts, string requestedPort, string defaultPort)
     {
         IReadOnlyCollection<string> portSet = availablePorts as IReadOnlyCollection<string> ?? availablePorts.ToArray();
         if (!string.IsNullOrWhiteSpace(requestedPort) && portSet.Contains(requestedPort, StringComparer.OrdinalIgnoreCase))
