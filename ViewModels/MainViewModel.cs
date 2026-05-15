@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.Windows;
 using System.Windows.Threading;
 using NMEASender.Wpf.Models;
 using NMEASender.Wpf.Services;
@@ -57,8 +58,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _useUdp;
 
     [ObservableProperty]
-    private bool _areAllSentencesChecked = true;
-    private bool _isSynchronizingAllSentencesChecked;
+    private bool _areAllComSentencesChecked = true;
+
+    [ObservableProperty]
+    private bool _areAllUdpSentencesChecked = true;
+    private bool _isSynchronizingAllComSentencesChecked;
+    private bool _isSynchronizingAllUdpSentencesChecked;
 
     [ObservableProperty]
     private string _title = string.Empty;
@@ -144,6 +149,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return _portBaudRateService.CreateSnapshot(_config, Ports, sentencePorts, DefaultPort);
     }
 
+    private IReadOnlyList<SentenceUdpPortSetting> GetSentenceUdpPortSettingsSnapshot()
+    {
+        List<SentenceUdpPortSetting> settings = new();
+        foreach ((SentenceItem item, string rowKey, int rowIndex) in EnumerateConfigurableSentenceRows())
+        {
+            string displayLabel = rowIndex > 1 ? $"{item.Label} #{rowIndex}" : item.Label;
+            settings.Add(new SentenceUdpPortSetting(
+                rowKey,
+                displayLabel,
+                NormalizeUdpPort(item.UdpPort)));
+        }
+
+        return settings;
+    }
+
     private bool TryApplyPortBaudRates(IReadOnlyDictionary<string, int> portBaudRates, out string error)
     {
         if (!_portBaudRateService.TryApply(_config, portBaudRates, out error))
@@ -151,10 +171,43 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return false;
         }
 
-        SaveConfig();
         if (IsRunning)
         {
             AddLog("Baud rate settings saved. Restart START to apply.");
+        }
+
+        return true;
+    }
+
+    private bool TryApplySentenceUdpPorts(IReadOnlyDictionary<string, int> sentenceUdpPorts, out string error)
+    {
+        error = string.Empty;
+        Dictionary<string, int> normalizedUdpPorts = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach ((string rowKey, int udpPort) in sentenceUdpPorts)
+        {
+            if (string.IsNullOrWhiteSpace(rowKey))
+            {
+                continue;
+            }
+
+            if (udpPort is < 1 or > 65535)
+            {
+                error = $"{rowKey} UDP port must be between 1 and 65535.";
+                return false;
+            }
+
+            normalizedUdpPorts[rowKey] = udpPort;
+        }
+
+        foreach ((SentenceItem item, string rowKey, _) in EnumerateConfigurableSentenceRows())
+        {
+            if (!normalizedUdpPorts.TryGetValue(rowKey, out int udpPort))
+            {
+                continue;
+            }
+
+            item.UdpPort = udpPort;
         }
 
         return true;
@@ -168,16 +221,29 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnAreAllSentencesCheckedChanged(bool value)
+    partial void OnAreAllComSentencesCheckedChanged(bool value)
     {
-        if (_isSynchronizingAllSentencesChecked)
+        if (_isSynchronizingAllComSentencesChecked)
         {
             return;
         }
 
         foreach (SentenceItem item in ConfigurableSentences())
         {
-            item.IsEnabled = value;
+            item.IsComEnabled = value;
+        }
+    }
+
+    partial void OnAreAllUdpSentencesCheckedChanged(bool value)
+    {
+        if (_isSynchronizingAllUdpSentencesChecked)
+        {
+            return;
+        }
+
+        foreach (SentenceItem item in ConfigurableSentences())
+        {
+            item.IsUdpEnabled = value;
         }
     }
 
@@ -255,8 +321,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
             RefreshPorts();
 
-            List<string> enabledPorts = AllSentences()
-                .Where(item => item.IsEnabled)
+            List<SentenceItem> comEnabledSentences = ConfigurableSentences()
+                .Where(item => item.IsComEnabled)
+                .ToList();
+
+            List<string> enabledPorts = comEnabledSentences
+                .Where(item => item.IsComEnabled)
                 .Select(item => item.PortName)
                 .Where(port => !string.IsNullOrWhiteSpace(port))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -275,10 +345,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 udpPort,
                 IsIosSource);
 
-            if (!await _nmeaTransmissionService.StartAsync(startContext, AddLog))
+            TransmissionStartResult startResult = await _nmeaTransmissionService.StartAsync(startContext, AddLog);
+            if (!startResult.Started)
             {
+                ShowComOpenFailureDialog(comEnabledSentences, startResult.FailedComPorts);
                 return;
             }
+
+            ShowComOpenFailureDialog(comEnabledSentences, startResult.FailedComPorts);
 
             SaveConfig();
             IsRunning = true;
@@ -321,7 +395,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         RefreshPorts();
         IReadOnlyDictionary<string, int> currentPortBaudRates = GetPortBaudRatesSnapshot();
-        if (!_portBaudRateSettingsDialogService.TryShow(currentPortBaudRates, BaudRateOptions, out IReadOnlyDictionary<string, int> updatedPortBaudRates))
+        IReadOnlyList<SentenceUdpPortSetting> currentSentenceUdpPorts = GetSentenceUdpPortSettingsSnapshot();
+
+        if (!_portBaudRateSettingsDialogService.TryShow(
+                currentPortBaudRates,
+                BaudRateOptions,
+                currentSentenceUdpPorts,
+                out IReadOnlyDictionary<string, int> updatedPortBaudRates,
+                out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts))
         {
             return;
         }
@@ -329,7 +410,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (!TryApplyPortBaudRates(updatedPortBaudRates, out string error))
         {
             AddLog($"Baud rate setting failed: {error}");
+            return;
         }
+
+        if (!TryApplySentenceUdpPorts(updatedSentenceUdpPorts, out string udpError))
+        {
+            AddLog($"Sentence UDP port setting failed: {udpError}");
+            return;
+        }
+
+        SaveConfig();
     }
 
     private void SendTick()
@@ -339,13 +429,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        List<SentenceItem> enabledSentences = AllSentences().Where(item => item.IsEnabled).ToList();
+        List<SentenceItem> enabledSentences = AllSentences()
+            .Where(item => item.IsComEnabled || item.IsUdpEnabled)
+            .ToList();
+        int defaultUdpPort = TryParseUdpPort(UdpPortText, out int parsedUdpPort)
+            ? parsedUdpPort
+            : NormalizeUdpPort(_config.UdpPort);
         TransmissionTickContext tickContext = new(
             enabledSentences,
             _data,
             IsIosSource,
             CurrentBuildOptions(),
-            UdpPortText);
+            defaultUdpPort);
 
         _nmeaTransmissionService.DispatchTick(tickContext, AddLog, Stop);
     }
@@ -486,7 +581,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         SentenceItem duplicate = CloneSentenceItem(source);
         duplicate.PropertyChanged += Sentence_PropertyChanged;
         collection.Insert(index + 1, duplicate);
-        SynchronizeAllSentencesChecked();
+        SynchronizeAllSentenceChecks();
         return true;
     }
 
@@ -500,13 +595,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         source.PropertyChanged -= Sentence_PropertyChanged;
         collection.RemoveAt(index);
-        SynchronizeAllSentencesChecked();
+        SynchronizeAllSentenceChecks();
         return true;
     }
 
     private static SentenceItem CloneSentenceItem(SentenceItem source)
     {
-        return new SentenceItem(source.Id, source.Flag, source.Label, source.PortName, source.IsEnabled, source.HasSecondary, isDuplicateRow: true)
+        return new SentenceItem(
+            source.Id,
+            source.Flag,
+            source.Label,
+            source.PortName,
+            source.IsComEnabled,
+            source.IsUdpEnabled,
+            source.UdpPort,
+            source.HasSecondary,
+            isDuplicateRow: true)
         {
             PrimaryText = source.PrimaryText,
             SecondaryText = source.SecondaryText
@@ -562,7 +666,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             sentence.PropertyChanged += Sentence_PropertyChanged;
         }
 
-        SynchronizeAllSentencesChecked();
+        SynchronizeAllSentenceChecks();
     }
 
     private IEnumerable<SentenceItem> AllSentences()
@@ -575,28 +679,53 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return GpsSentences.Concat(OtherSentences);
     }
 
+    private IEnumerable<(SentenceItem Item, string RowKey, int RowIndex)> EnumerateConfigurableSentenceRows()
+    {
+        Dictionary<NmeaSentenceId, int> rowIndexBySentence = new();
+        foreach (SentenceItem item in ConfigurableSentences())
+        {
+            int rowIndex = rowIndexBySentence.TryGetValue(item.Id, out int currentIndex)
+                ? currentIndex + 1
+                : 1;
+
+            rowIndexBySentence[item.Id] = rowIndex;
+            yield return (item, BuildSentenceRowKey(item.Id, rowIndex), rowIndex);
+        }
+    }
+
+    private static string BuildSentenceRowKey(NmeaSentenceId id, int rowIndex)
+    {
+        string key = id.ToString().ToUpperInvariant();
+        return rowIndex <= 1 ? key : $"{key}#{rowIndex}";
+    }
+
     private void Sentence_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(SentenceItem.IsEnabled))
+        if (e.PropertyName != nameof(SentenceItem.IsComEnabled) &&
+            e.PropertyName != nameof(SentenceItem.IsUdpEnabled))
         {
             return;
         }
 
-        SynchronizeAllSentencesChecked();
+        SynchronizeAllSentenceChecks();
     }
 
-    private void SynchronizeAllSentencesChecked()
+    private void SynchronizeAllSentenceChecks()
     {
-        bool isAllChecked = ConfigurableSentences().All(item => item.IsEnabled);
+        bool isAllComChecked = ConfigurableSentences().All(item => item.IsComEnabled);
+        bool isAllUdpChecked = ConfigurableSentences().All(item => item.IsUdpEnabled);
 
-        _isSynchronizingAllSentencesChecked = true;
+        _isSynchronizingAllComSentencesChecked = true;
+        _isSynchronizingAllUdpSentencesChecked = true;
         try
         {
-            AreAllSentencesChecked = isAllChecked;
+            AreAllComSentencesChecked = isAllComChecked;
+            AreAllUdpSentencesChecked = isAllUdpChecked;
         }
         finally
         {
-            _isSynchronizingAllSentencesChecked = false;
+            _isSynchronizingAllComSentencesChecked = false;
+            _isSynchronizingAllUdpSentencesChecked = false;
         }
     }
 
@@ -622,11 +751,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private int ResolveBaudRate(string portName)
-    {
-        return _portBaudRateService.ResolveBaudRate(_config, portName);
-    }
-
     private void AddLog(string message)
     {
         if (Logs.Count > 1000)
@@ -637,9 +761,40 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Logs.Add(message);
     }
 
+    private static void ShowComOpenFailureDialog(
+        IReadOnlyList<SentenceItem> comEnabledSentences,
+        IReadOnlyList<PortOpenOutcome> failedComPorts)
+    {
+        if (failedComPorts.Count == 0 || comEnabledSentences.Count == 0)
+        {
+            return;
+        }
+
+        HashSet<string> failedPortSet = failedComPorts
+            .Select(result => result.PortName)
+            .Where(port => !string.IsNullOrWhiteSpace(port))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        List<string> failedSentenceLines = comEnabledSentences
+            .Where(item => failedPortSet.Contains(item.PortName))
+            .Select(item => $"{item.Label} ({item.PortName})")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        string body = failedSentenceLines.Count > 0
+            ? string.Join(Environment.NewLine, failedSentenceLines)
+            : string.Join(Environment.NewLine, failedComPorts.Select(result => result.PortName));
+
+        MessageBox.Show(
+            $"COM Open Failed.{Environment.NewLine}{Environment.NewLine}{body}",
+            "COM Open Failed",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
     private NmeaBuildOptions CurrentBuildOptions()
     {
-        return new NmeaBuildOptions(UseTrueWind, UseHdmOutput);
+        return new NmeaBuildOptions(UseTrueWind, UseHdmOutput, _config.ProjectType);
     }
 
     private ManualInputValues CurrentManualInput()
@@ -659,6 +814,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out port) &&
                port is >= 1 and <= 65535;
+    }
+
+    private static int NormalizeUdpPort(int port)
+    {
+        return port is >= 1 and <= 65535 ? port : 40014;
     }
 
     private bool TryGetUdpPort(out int port, out string error)

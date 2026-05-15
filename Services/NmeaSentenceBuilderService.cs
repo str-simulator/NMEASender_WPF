@@ -4,8 +4,6 @@ using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
 
-public sealed record NmeaBuildOptions(bool TrueWind, bool UseHdmOutput = true);
-
 public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
 {
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
@@ -14,9 +12,9 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
     public IReadOnlyList<string> Build(NmeaSentenceId id, NmeaDataDto data, NmeaBuildOptions options)
     {
         data.Time = data.Time == default ? DateTime.Now : data.Time;
-        DerivedData derived = DerivedData.From(data);
+        NmeaDerivedData derived = NmeaDerivedData.From(data);
 
-        return id switch
+        IReadOnlyList<string> rawSentences = id switch
         {
             NmeaSentenceId.STR => One(STR(data)),
             NmeaSentenceId.Gga => One(Gga(data)),
@@ -45,6 +43,8 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
             NmeaSentenceId.Vdo => One(Vdo(data)),
             _ => Array.Empty<string>()
         };
+
+        return ApplyProjectTalkerProfile(rawSentences, id, options);
     }
 
     public byte Checksum(string body)
@@ -52,13 +52,14 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
         return ComputeChecksum(body);
     }
 
-    public string BuildVtgSentence(double gyroHeading, double magneticVariation, double waterSpeedKnots, double waterSpeedKmh)
+    public string BuildVtgSentence(double gyroHeading, double magneticVariation, double waterSpeedKnots, double waterSpeedKmh, NmeaBuildOptions options)
     {
         double magneticHeading = NormalizeDegrees(gyroHeading + magneticVariation);
         string body = string.Create(
             Invariant,
             $"GPVTG,{gyroHeading:0.0},T,{magneticHeading:0.0},M,{waterSpeedKnots:0.0},N,{waterSpeedKmh:0.0},K");
-        return Full(body);
+        string rawSentence = Full(body);
+        return ApplyProjectTalkerProfile(One(rawSentence), NmeaSentenceId.Vtg, options)[0];
     }
 
     private static string STR(NmeaDataDto data)
@@ -115,7 +116,7 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
         return Full(body);
     }
 
-    private static string Rmc(NmeaDataDto data, DerivedData derived)
+    private static string Rmc(NmeaDataDto data, NmeaDerivedData derived)
     {
         var lat = FormatLatitude(data.Latitude);
         var lon = FormatLongitude(data.Longitude);
@@ -125,7 +126,7 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
         return Full(body);
     }
 
-    private static string Vtg(NmeaDataDto data, DerivedData derived)
+    private static string Vtg(NmeaDataDto data, NmeaDerivedData derived)
     {
         string? body = string.Create(
             Invariant,
@@ -144,17 +145,12 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
         return Full(string.Create(Invariant, $"HEHDT,{data.GyroHeading:000.0},T"));
     }
 
-    private static string Vbw(DerivedData derived)
+    private static string Vbw(NmeaDerivedData derived)
     {
-        //string? body = string.Create(
-        //    Invariant,
-        //    $"--VBW,{derived.WaterLongitudinalKnots:0.0},{derived.WaterLateralKnots:0.0},V,{derived.LongitudinalKnots:0.0},{derived.LateralKnots:0.0},A");
-
-        string? bodyTCS = string.Create( // TCS (삼성중공업 납품에서는 Sentence 시작 `IN`)
+        string? body = string.Create(
             Invariant,
-            $"INVBW,{derived.WaterLongitudinalKnots:0.0},{derived.WaterLateralKnots:0.0},A,{derived.LongitudinalKnots:0.0},{derived.LateralKnots:0.0},A");
-        //return Full(body);
-        return Full(bodyTCS);
+            $"--VBW,{derived.WaterLongitudinalKnots:0.0},{derived.WaterLateralKnots:0.0},A,{derived.LongitudinalKnots:0.0},{derived.LateralKnots:0.0},A");
+        return Full(body);
     }
 
     private static string Rot(NmeaDataDto data)
@@ -295,13 +291,13 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
 
     private static string AisPosition(string talker, int mmsi, double latitude, double longitude, double speedOverGround, double courseOverGround, double heading, DateTime time)
     {
-        string payload = BuildAisPositionPayload(mmsi, latitude, longitude, speedOverGround, courseOverGround, heading, time);
+        string payload = AisPayloadBuilder.BuildPositionPayload(mmsi, latitude, longitude, speedOverGround, courseOverGround, heading, time);
         return Full($"{talker},1,1,,A,{payload},0", ais: true);
     }
 
     private static string AisStatic(string talker, TrafficShipData ship)
     {
-        string payload = BuildAisStaticPayload(ship);
+        string payload = AisPayloadBuilder.BuildStaticPayload(ship);
         string sequence = ship.SharedIndex >= 0 ? ((ship.SharedIndex + 1) % 10).ToString(Invariant) : "0";
         return Full($"{talker},1,1,{sequence},A,{payload},0", ais: true);
     }
@@ -390,106 +386,6 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
         };
     }
 
-    private static string BuildAisPositionPayload(int mmsi, double latitude, double longitude, double sogKnots, double cog, double heading, DateTime time)
-    {
-        List<int> bits = new List<int>(168);
-        AddUnsigned(bits, 1, 6);
-        AddUnsigned(bits, 2, 2);
-        AddUnsigned(bits, Math.Clamp(mmsi, 0, 999999999), 30);
-        AddUnsigned(bits, 0, 4);
-        AddUnsigned(bits, 127, 8);
-        AddUnsigned(bits, (int)Math.Clamp(Math.Round(sogKnots * 10.0), 0.0, 1022.0), 10);
-        AddUnsigned(bits, 0, 1);
-        AddSigned(bits, (int)Math.Round(longitude * 600000.0), 28);
-        AddSigned(bits, (int)Math.Round(latitude * 600000.0), 27);
-        AddUnsigned(bits, (int)Math.Clamp(Math.Round(NormalizeDegrees(cog) * 10.0), 0.0, 3599.0), 12);
-        AddUnsigned(bits, (int)Math.Clamp(Math.Round(NormalizeDegrees(heading)), 0.0, 359.0), 9);
-        AddUnsigned(bits, 53, 6);
-        AddUnsigned(bits, 0, 4);
-        AddUnsigned(bits, 0, 1);
-        AddUnsigned(bits, 0, 1);
-        AddUnsigned(bits, 0, 2);
-        AddUnsigned(bits, 1, 3);
-        AddUnsigned(bits, Math.Clamp(time.Hour, 0, 31), 5);
-        AddUnsigned(bits, 0, 3);
-        AddUnsigned(bits, Math.Clamp(time.Minute, 0, 63), 6);
-
-        return EncodeAisSixBit(bits);
-    }
-
-    private static string BuildAisStaticPayload(TrafficShipData ship)
-    {
-        List<int> bits = new List<int>(360);
-        AddUnsigned(bits, 5, 6);
-        AddUnsigned(bits, 0, 2);
-        AddUnsigned(bits, Math.Clamp(ship.Mmsi, 0, 999999999), 30);
-        AddUnsigned(bits, 0, 2);
-        AddUnsigned(bits, Math.Max(0, ship.ImoNumber), 30);
-        AddAisLegacyText(bits, ship.CallSign, 7, upperCase: false);
-        AddAisLegacyText(bits, ship.ShipName, 20, upperCase: true);
-        AddUnsigned(bits, 70, 8);
-        AddUnsigned(bits, Math.Max(0, (int)(ship.Length / 2.0)), 9);
-        AddUnsigned(bits, Math.Max(0, (int)(ship.Length / 2.0)), 9);
-        AddUnsigned(bits, Math.Max(0, (int)(ship.Beam / 2.0)), 6);
-        AddUnsigned(bits, Math.Max(0, (int)(ship.Beam / 2.0)), 6);
-        AddUnsigned(bits, 1, 4);
-        AddUnsigned(bits, 0, 4);
-        AddUnsigned(bits, 0, 5);
-        AddUnsigned(bits, 24, 5);
-        AddUnsigned(bits, 60, 6);
-        AddUnsigned(bits, Math.Max(0, ship.Draft), 8);
-        AddAisLegacyText(bits, ship.Destination, 20, upperCase: false);
-
-        return EncodeAisSixBit(bits);
-    }
-
-    private static void AddUnsigned(List<int> bits, long value, int width)
-    {
-        for (int bit = width - 1; bit >= 0; bit--)
-        {
-            bits.Add(((value >> bit) & 1) == 1 ? 1 : 0);
-        }
-    }
-
-    private static void AddSigned(List<int> bits, long value, int width)
-    {
-        if (value < 0)
-        {
-            value = (1L << width) + value;
-        }
-
-        AddUnsigned(bits, value, width);
-    }
-
-    private static void AddAisLegacyText(List<int> bits, string value, int length, bool upperCase)
-    {
-        string source = upperCase ? (value ?? string.Empty).ToUpperInvariant() : value ?? string.Empty;
-        for (int index = 0; index < length; index++)
-        {
-            char ch = index < source.Length ? source[index] : '\0';
-            int code = ch <= 0xFF ? ch : '?';
-            int sixBit = code >= 0x40 ? code - 0x40 : code;
-            AddUnsigned(bits, sixBit & 0x3F, 6);
-        }
-    }
-
-    private static string EncodeAisSixBit(IReadOnlyList<int> bits)
-    {
-        char[] chars = new char[bits.Count / 6];
-        for (int index = 0; index < chars.Length; index++)
-        {
-            int value = 0;
-            for (int bit = 0; bit < 6; bit++)
-            {
-                value = (value << 1) | bits[index * 6 + bit];
-            }
-
-            chars[index] = (char)(value < 40 ? value + 48 : value + 56);
-        }
-
-        return new string(chars);
-    }
-
     private static bool IsValidCoordinate(double latitude, double longitude)
     {
         return double.IsFinite(latitude) &&
@@ -509,41 +405,71 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
         return checksum;
     }
 
-    private sealed class DerivedData
+    private static IReadOnlyList<string> ApplyProjectTalkerProfile(
+        IReadOnlyList<string> sentences,
+        NmeaSentenceId sentenceId,
+        NmeaBuildOptions options)
     {
-        public double CourseOverGround { get; private init; }
-        public double SpeedOverGroundKnots { get; private init; }
-        public double LongitudinalKnots { get; private init; }
-        public double LateralKnots { get; private init; }
-        public double WaterSpeedKnots { get; private init; }
-        public double WaterSpeedKmh { get; private init; }
-        public double WaterLongitudinalKnots { get; private init; }
-        public double WaterLateralKnots { get; private init; }
-        public double MagneticHeading { get; private init; }
-
-        public static DerivedData From(NmeaDataDto data)
+        if (sentences.Count == 0)
         {
-            double course = NormalizeDegrees(Math.Atan2(data.LateralSpeedMps, data.LongitudinalSpeedMps) * NmeaConstants.ToDegrees + data.Heading);
-            double longitudinalKnots = data.LongitudinalSpeedMps * 3600.0 / NmeaConstants.NauticalMileMeters;
-            double lateralKnots = -data.LateralSpeedMps * 3600.0 / NmeaConstants.NauticalMileMeters;
-            double speedOverGroundKnots = Math.Sqrt(longitudinalKnots * longitudinalKnots + lateralKnots * lateralKnots);
-            double currentAngle = (data.Heading - data.CurrentSet) * NmeaConstants.ToRadians;
-            double waterLongitudinal = data.LongitudinalSpeedMps - data.CurrentDrift * Math.Cos(currentAngle);
-            double waterLateral = data.LateralSpeedMps - data.CurrentDrift * Math.Sin(currentAngle);
-
-            return new DerivedData
-            {
-                CourseOverGround = course,
-                SpeedOverGroundKnots = speedOverGroundKnots,
-                LongitudinalKnots = longitudinalKnots,
-                LateralKnots = lateralKnots,
-                WaterSpeedKnots = waterLongitudinal * 3600.0 / NmeaConstants.NauticalMileMeters,
-                WaterSpeedKmh = waterLongitudinal * 3600.0 / 1000.0,
-                WaterLongitudinalKnots = waterLongitudinal * 3600.0 / NmeaConstants.NauticalMileMeters,
-                WaterLateralKnots = waterLateral * 3600.0 / NmeaConstants.NauticalMileMeters,
-                MagneticHeading = NormalizeDegrees(data.GyroHeading + data.MagneticVariation)
-            };
+            return sentences;
         }
+
+        NmeaTalkerProfile talkerProfile = ProjectTalkerProfiles.For(options.ProjectType);
+        string targetTalkerId = NormalizeTalkerId(talkerProfile.ResolveTalkerId(sentenceId, options.UseHdmOutput));
+
+        if (targetTalkerId == "--")
+        {
+            return sentences;
+        }
+
+        return sentences
+            .Select(sentence => ReplaceTalkerId(sentence, targetTalkerId))
+            .ToArray();
+    }
+
+    private static string ReplaceTalkerId(string sentence, string talkerId)
+    {
+        if (string.IsNullOrWhiteSpace(sentence) || talkerId.Length != 2)
+        {
+            return sentence;
+        }
+
+        int start = sentence[0] is '$' or '!' ? 1 : 0;
+        int commaIndex = sentence.IndexOf(',', start);
+        int starIndex = sentence.IndexOf('*', start);
+        if (starIndex < 0)
+        {
+            return sentence;
+        }
+
+        int tokenEnd = commaIndex >= 0 ? commaIndex : starIndex;
+        if (tokenEnd <= start || tokenEnd - start < 5 || starIndex <= tokenEnd)
+        {
+            return sentence;
+        }
+
+        string token = sentence.Substring(start, tokenEnd - start);
+        string formatter = token.Length >= 3 ? token.Substring(2) : token;
+        if (formatter.Length != 3)
+        {
+            return sentence;
+        }
+
+        string updatedBody = $"{talkerId}{formatter}{sentence.Substring(tokenEnd, starIndex - tokenEnd)}";
+        char prefix = start == 1 ? sentence[0] : '$';
+        return string.Create(Invariant, $"{prefix}{updatedBody}*{ComputeChecksum(updatedBody):X2}\r\n");
+    }
+
+    private static string NormalizeTalkerId(string talkerId)
+    {
+        if (string.IsNullOrWhiteSpace(talkerId))
+        {
+            return "--";
+        }
+
+        string normalized = talkerId.Trim().ToUpperInvariant();
+        return normalized.Length >= 2 ? normalized[..2] : "--";
     }
 }
 

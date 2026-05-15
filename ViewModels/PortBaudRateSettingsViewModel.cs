@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using NMEASender.Wpf.Models;
@@ -14,7 +14,8 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
 
     public PortBaudRateSettingsViewModel(
         IReadOnlyDictionary<string, int> portBaudRates,
-        IReadOnlyList<int>? baudRateOptions = null)
+        IReadOnlyList<int>? baudRateOptions = null,
+        IReadOnlyList<SentenceUdpPortSetting>? sentenceUdpPortSettings = null)
     {
         BaudRateOptions = (baudRateOptions is { Count: > 0 } ? baudRateOptions : DefaultBaudRates)
             .Distinct()
@@ -25,20 +26,34 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         {
             PortBaudRates.Add(new PortBaudRateItem(portName, baudRate));
         }
+
+        if (sentenceUdpPortSettings is null)
+        {
+            return;
+        }
+
+        foreach (SentenceUdpPortSetting setting in sentenceUdpPortSettings)
+        {
+            SentenceUdpPorts.Add(new SentenceUdpPortItem(setting.RowKey, setting.SentenceLabel, setting.UdpPort));
+        }
     }
 
     public ObservableCollection<PortBaudRateItem> PortBaudRates { get; } = new();
 
+    public ObservableCollection<SentenceUdpPortItem> SentenceUdpPorts { get; } = new();
+
     public IReadOnlyList<int> BaudRateOptions { get; }
 
     public IReadOnlyDictionary<string, int> Result { get; private set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyDictionary<string, int> SentenceUdpPortResult { get; private set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
     public event EventHandler<bool>? CloseRequested;
 
     [RelayCommand]
     private void Save()
     {
-        Dictionary<string, int> result = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> baudRateResult = new(StringComparer.OrdinalIgnoreCase);
 
         foreach (PortBaudRateItem item in PortBaudRates)
         {
@@ -53,11 +68,29 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
                 return;
             }
 
-            result[item.PortName] = item.BaudRate;
+            baudRateResult[item.PortName] = item.BaudRate;
+        }
+
+        Dictionary<string, int> udpPortResult = new(StringComparer.OrdinalIgnoreCase);
+        foreach (SentenceUdpPortItem item in SentenceUdpPorts)
+        {
+            if (string.IsNullOrWhiteSpace(item.RowKey))
+            {
+                continue;
+            }
+
+            if (item.UdpPort is < 1 or > 65535)
+            {
+                ValidationMessage = $"{item.SentenceLabel} UDP port must be between 1 and 65535.";
+                return;
+            }
+
+            udpPortResult[item.RowKey] = item.UdpPort;
         }
 
         ValidationMessage = string.Empty;
-        Result = result;
+        Result = baudRateResult;
+        SentenceUdpPortResult = udpPortResult;
         CloseRequested?.Invoke(this, true);
     }
 

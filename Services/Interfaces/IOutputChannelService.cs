@@ -20,7 +20,7 @@ public interface IOutputChannelService : IDisposable
 
     bool TryWriteCom(string portName, string sentence, out string? error);
 
-    bool TrySendUdp(string sentence, out string? error);
+    bool TrySendUdp(string sentence, int udpPort, out string? error);
 
     void MarkComPortClosed(string portName);
 }

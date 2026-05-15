@@ -1,5 +1,4 @@
 using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services;
 
 namespace NMEASender.Wpf.Services.Interfaces;
 
@@ -9,5 +8,5 @@ public interface INmeaSentenceBuilderService
 
     byte Checksum(string body);
 
-    string BuildVtgSentence(double gyroHeading, double magneticVariation, double waterSpeedKnots, double waterSpeedKmh);
+    string BuildVtgSentence(double gyroHeading, double magneticVariation, double waterSpeedKnots, double waterSpeedKmh, NmeaBuildOptions options);
 }

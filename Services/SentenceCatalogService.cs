@@ -66,26 +66,64 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
     {
         foreach (SentenceTemplate template in templates)
         {
-            bool enabled = template.EnabledOverride ?? ((config.SendFlag & template.Flag) == template.Flag);
+            bool isComEnabled = template.EnabledOverride ?? ((config.SendFlag & template.Flag) == template.Flag);
+            bool isUdpEnabled = template.EnabledOverride ?? ((config.UdpSendFlag & template.Flag) == template.Flag);
             string defaultPort = config.SentencePorts.TryGetValue(template.Id, out string? configuredPort) ? configuredPort : config.DefaultPort;
             List<string>? configuredPorts = config.SentencePortRows.TryGetValue(template.Id, out List<string>? ports) && ports.Count > 0
                 ? ports
                 : new List<string> { defaultPort };
+            List<int>? configuredUdpPorts = config.SentenceUdpPortRows.TryGetValue(template.Id, out List<int>? udpPorts) && udpPorts.Count > 0
+                ? udpPorts
+                : new List<int> { config.UdpPort };
+            int rowCount = Math.Max(configuredPorts.Count, configuredUdpPorts.Count);
 
-            for (int index = 0; index < configuredPorts.Count; index++)
+            for (int index = 0; index < rowCount; index++)
             {
-                string? port = configuredPorts[index];
+                string port = ResolveConfiguredPort(configuredPorts, index, defaultPort);
+                int udpPort = ResolveUdpPort(configuredUdpPorts, index, config.UdpPort);
                 bool isDuplicateRow = index > 0;
                 target.Add(new SentenceItem(
                     template.Id,
                     template.Flag,
                     template.Label,
                     pickAvailablePort(port),
-                    enabled,
+                    isComEnabled,
+                    isUdpEnabled,
+                    udpPort,
                     template.HasSecondary,
                     isDuplicateRow));
             }
         }
+    }
+
+    private static string ResolveConfiguredPort(IReadOnlyList<string> configuredPorts, int index, string defaultPort)
+    {
+        if (index < configuredPorts.Count && !string.IsNullOrWhiteSpace(configuredPorts[index]))
+        {
+            return configuredPorts[index];
+        }
+
+        if (configuredPorts.Count > 0 && !string.IsNullOrWhiteSpace(configuredPorts[0]))
+        {
+            return configuredPorts[0];
+        }
+
+        return defaultPort;
+    }
+
+    private static int ResolveUdpPort(IReadOnlyList<int> configuredUdpPorts, int index, int defaultUdpPort)
+    {
+        if (index < configuredUdpPorts.Count && configuredUdpPorts[index] is >= 1 and <= 65535)
+        {
+            return configuredUdpPorts[index];
+        }
+
+        if (configuredUdpPorts.Count > 0 && configuredUdpPorts[0] is >= 1 and <= 65535)
+        {
+            return configuredUdpPorts[0];
+        }
+
+        return defaultUdpPort is >= 1 and <= 65535 ? defaultUdpPort : 40014;
     }
 
     private sealed record SentenceTemplate(

@@ -1,0 +1,107 @@
+<UserControl x:Class="NMEASender.Wpf.Views.ManualLogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:behaviors="clr-namespace:NMEASender.Wpf.Behaviors"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DesignHeight="900"
+             d:DesignWidth="600"
+             mc:Ignorable="d">
+    <Border Style="{StaticResource PanelSurfaceStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Style="{StaticResource SectionTitleTextStyle}"
+                       Text="Manual Data" />
+
+            <Grid Grid.Row="1" Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Style="{StaticResource ManualFieldLabelTextStyle}"
+                           Text="Longitude" />
+                <TextBox Grid.Row="0"
+                         Grid.Column="1"
+                         Style="{StaticResource ManualFieldTextBoxStyle}"
+                         Text="{Binding LongitudeText, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="1"
+                           Style="{StaticResource ManualFieldLabelTextStyle}"
+                           Text="Latitude" />
+                <TextBox Grid.Row="1"
+                         Grid.Column="1"
+                         Style="{StaticResource ManualFieldTextBoxStyle}"
+                         Text="{Binding LatitudeText, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="2"
+                           Style="{StaticResource ManualFieldLabelTextStyle}"
+                           Text="Speed" />
+                <TextBox Grid.Row="2"
+                         Grid.Column="1"
+                         Style="{StaticResource ManualFieldTextBoxStyle}"
+                         Text="{Binding SpeedText, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="3"
+                           Style="{StaticResource ManualFieldLabelTextStyle}"
+                           Text="Heading" />
+                <TextBox Grid.Row="3"
+                         Grid.Column="1"
+                         Style="{StaticResource ManualFieldTextBoxStyle}"
+                         Text="{Binding HeadingText, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Grid.Row="2" Margin="0,16,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0"
+                        Command="{Binding GetDataCommand}"
+                        Content="Get Data"
+                        Style="{StaticResource ToolbarButtonStyle}" />
+                <Button Grid.Column="2"
+                        Command="{Binding SetDataCommand}"
+                        Content="Set Data"
+                        Style="{StaticResource ToolbarButtonStyle}" />
+            </Grid>
+
+            <Grid Grid.Row="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <TextBlock HorizontalAlignment="Left"
+                               Style="{StaticResource SectionTitleTextStyle}"
+                               Text="Log" />
+                    <Button HorizontalAlignment="Right"
+                            Command="{Binding ClearLogCommand}"
+                            Content="Clear"
+                            Style="{StaticResource ToolbarButtonStyle}" />
+                </Grid>
+                <ListBox x:Name="LogListBox"
+                         Grid.Row="1"
+                         MinHeight="260"
+                         behaviors:ListBoxAutoFollowBehavior.IsEnabled="True"
+                         ItemsSource="{Binding Logs}"
+                         ScrollViewer.CanContentScroll="False"
+                         ScrollViewer.HorizontalScrollBarVisibility="Visible"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         VirtualizingPanel.IsVirtualizing="False" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

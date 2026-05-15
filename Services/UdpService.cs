@@ -8,10 +8,10 @@ namespace NMEASender.Wpf.Services;
 public sealed class UdpService : IUdpService
 {
     private readonly UdpClient _client = new(AddressFamily.InterNetwork);
-    private IPEndPoint? _endPoint;
+    private bool _isOpen;
     private bool _disposed;
 
-    public bool IsOpen => !_disposed && _endPoint is not null;
+    public bool IsOpen => !_disposed && _isOpen;
 
     public bool Open(int port, out string error)
     {
@@ -24,44 +24,57 @@ public sealed class UdpService : IUdpService
                 return false;
             }
 
+            if (port is < 1 or > 65535)
+            {
+                error = "UDP port must be between 1 and 65535.";
+                return false;
+            }
+
             _client.EnableBroadcast = true;
-            _endPoint = new IPEndPoint(IPAddress.Broadcast, port);
+            _isOpen = true;
             return true;
         }
         catch (Exception ex)
         {
             error = ex.Message;
-            _endPoint = null;
+            _isOpen = false;
             return false;
         }
     }
 
-    public bool Send(string sentence, out string error)
+    public bool Send(string sentence, int port, out string error)
     {
         error = string.Empty;
         try
         {
-            if (_endPoint is null)
+            if (!_isOpen)
             {
                 error = "UDP sender is not open.";
                 return false;
             }
 
+            if (port is < 1 or > 65535)
+            {
+                error = "UDP port must be between 1 and 65535.";
+                return false;
+            }
+
             byte[] bytes = Encoding.ASCII.GetBytes(sentence);
-            _client.Send(bytes, bytes.Length, _endPoint);
+            IPEndPoint endPoint = new(IPAddress.Broadcast, port);
+            _client.Send(bytes, bytes.Length, endPoint);
             return true;
         }
         catch (Exception ex)
         {
             error = ex.Message;
-            _endPoint = null;
+            _isOpen = false;
             return false;
         }
     }
 
     public void Close()
     {
-        _endPoint = null;
+        _isOpen = false;
     }
 
     public void Dispose()

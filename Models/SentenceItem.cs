@@ -5,13 +5,19 @@ namespace NMEASender.Wpf.Models;
 public sealed partial class SentenceItem : ObservableObject
 {
     [ObservableProperty]
-    private bool _isEnabled;
+    private bool _isComEnabled;
+
+    [ObservableProperty]
+    private bool _isUdpEnabled;
 
     [ObservableProperty]
     private bool _isDuplicateRow;
 
     [ObservableProperty]
     private string _portName;
+
+    [ObservableProperty]
+    private int _udpPort;
 
     [ObservableProperty]
     private string _primaryText = string.Empty;
@@ -24,7 +30,9 @@ public sealed partial class SentenceItem : ObservableObject
         NmeaSendFlag flag,
         string label,
         string portName,
-        bool isEnabled,
+        bool isComEnabled,
+        bool isUdpEnabled,
+        int udpPort,
         bool hasSecondary = false,
         bool isDuplicateRow = false)
     {
@@ -32,7 +40,9 @@ public sealed partial class SentenceItem : ObservableObject
         Flag = flag;
         Label = label;
         _portName = portName;
-        _isEnabled = isEnabled;
+        _isComEnabled = isComEnabled;
+        _isUdpEnabled = isUdpEnabled;
+        _udpPort = NormalizeUdpPort(udpPort);
         HasSecondary = hasSecondary;
         _isDuplicateRow = isDuplicateRow;
     }
@@ -52,5 +62,19 @@ public sealed partial class SentenceItem : ObservableObject
         {
             PortName = normalized;
         }
+    }
+
+    partial void OnUdpPortChanged(int value)
+    {
+        int normalized = NormalizeUdpPort(value);
+        if (value != normalized)
+        {
+            UdpPort = normalized;
+        }
+    }
+
+    private static int NormalizeUdpPort(int port)
+    {
+        return port is >= 1 and <= 65535 ? port : 40014;
     }
 }

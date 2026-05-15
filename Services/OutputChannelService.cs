@@ -105,9 +105,9 @@ public sealed class OutputChannelService : IOutputChannelService
         return success;
     }
 
-    public bool TrySendUdp(string sentence, out string? error)
+    public bool TrySendUdp(string sentence, int udpPort, out string? error)
     {
-        return _udpSender.Send(sentence, out error);
+        return _udpSender.Send(sentence, udpPort, out error);
     }
 
     public void MarkComPortClosed(string portName)

@@ -29,11 +29,17 @@ public interface INmeaSenderConfigService
 
     int UdpPort { get; set; }
 
+    ProjectType ProjectType { get; set; }
+
     NmeaSendFlag SendFlag { get; set; }
+
+    NmeaSendFlag UdpSendFlag { get; set; }
 
     Dictionary<NmeaSentenceId, string> SentencePorts { get; }
 
     Dictionary<NmeaSentenceId, List<string>> SentencePortRows { get; }
+
+    Dictionary<NmeaSentenceId, List<int>> SentenceUdpPortRows { get; }
 
     Dictionary<string, int> PortBaudRates { get; }
 

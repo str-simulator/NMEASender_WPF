@@ -6,7 +6,7 @@ public interface IUdpService : IDisposable
 
     bool Open(int port, out string error);
 
-    bool Send(string sentence, out string error);
+    bool Send(string sentence, int port, out string error);
 
     void Close();
 }

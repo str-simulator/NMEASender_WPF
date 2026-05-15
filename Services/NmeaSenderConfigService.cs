@@ -9,8 +9,11 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
 {
     private const string GpsSection = "GPS CONFIG";
     private const string ConfigSection = "CONFIG";
+    private const string ProjectKey = "Project";
+    private const string LegacyProjectKey = "PROJECT TYPE";
     private const string SocketSection = "SOCKET";
     private const string PortsSection = "SENTENCE PORTS";
+    private const string UdpPortsSection = "UDP PORTS";
     private const string BaudSection = "BAUD RATE";
 
     public string Title { get; set; } = "ECDIS Sender";
@@ -25,9 +28,12 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     public bool UseHdmOutput { get; set; } = true;
     public bool UseUdp { get; set; } = true;
     public int UdpPort { get; set; } = 40014;
+    public ProjectType ProjectType { get; set; } = global::NMEASender.Wpf.Models.ProjectType.PS2603;
     public NmeaSendFlag SendFlag { get; set; } = DefaultSendFlag;
+    public NmeaSendFlag UdpSendFlag { get; set; } = DefaultSendFlag;
     public Dictionary<NmeaSentenceId, string> SentencePorts { get; } = new();
     public Dictionary<NmeaSentenceId, List<string>> SentencePortRows { get; } = new();
+    public Dictionary<NmeaSentenceId, List<int>> SentenceUdpPortRows { get; } = new();
     public Dictionary<string, int> PortBaudRates { get; } = new(StringComparer.OrdinalIgnoreCase);
     public string SavePath { get; set; } = Path.Combine(AppContext.BaseDirectory, "NMEASender.Wpf.ini");
 
@@ -53,15 +59,27 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
 
         const string missing = "__MISSING__";
         string legacyRpmPort = ini.Get(PortsSection, "RPM", missing);
+        string configuredProject = ini.Get(ConfigSection, ProjectKey, missing);
+        if (configuredProject == missing)
+        {
+            configuredProject = ini.Get(ConfigSection, LegacyProjectKey, nameof(global::NMEASender.Wpf.Models.ProjectType.PS2603));
+        }
+
         bool hasLegacyRpmPort = legacyRpmPort != missing;
         bool hasRpmPortKey = ini.Get(PortsSection, nameof(NmeaSentenceId.RpmPort).ToUpperInvariant(), missing) != missing;
         bool hasRpmStbdKey = ini.Get(PortsSection, nameof(NmeaSentenceId.RpmStbd).ToUpperInvariant(), missing) != missing;
         bool legacyRpmLayout = hasLegacyRpmPort && !hasRpmPortKey && !hasRpmStbdKey;
         uint rawSendFlag = ini.GetUInt(GpsSection, "SEND FLAG", (uint)DefaultSendFlag);
         NmeaSendFlag sendFlag = (NmeaSendFlag)rawSendFlag;
+        uint rawUdpSendFlag = ini.GetUInt(GpsSection, "UDP SEND FLAG", rawSendFlag);
+        NmeaSendFlag udpSendFlag = (NmeaSendFlag)rawUdpSendFlag;
         if (legacyRpmLayout && (sendFlag & NmeaSendFlag.RpmPort) == NmeaSendFlag.RpmPort)
         {
             sendFlag |= NmeaSendFlag.RpmStbd;
+        }
+        if (legacyRpmLayout && (udpSendFlag & NmeaSendFlag.RpmPort) == NmeaSendFlag.RpmPort)
+        {
+            udpSendFlag |= NmeaSendFlag.RpmStbd;
         }
 
         int portNo = ini.GetInt(GpsSection, "PORT NO", 1);
@@ -80,7 +98,9 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
             UseHdmOutput = ini.GetBool(GpsSection, "Magnetic", true),
             UseUdp = ini.GetBool(ConfigSection, "USE UDP", ini.GetBool(SocketSection, "USE UDP", true)),
             UdpPort = NormalizeUdpPort(ini.GetInt(SocketSection, "SEND PORT", 40014)),
-            SendFlag = sendFlag
+            ProjectType = ParseProjectType(configuredProject),
+            SendFlag = sendFlag,
+            UdpSendFlag = udpSendFlag
         };
 
         foreach (NmeaSentenceId id in Enum.GetValues(typeof(NmeaSentenceId)))
@@ -92,8 +112,15 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
             };
             string key = id.ToString().ToUpperInvariant();
             List<string> ports = LoadSentencePorts(ini, PortsSection, key, defaultPort);
+            List<int> udpPorts = LoadSentenceUdpPorts(ini, UdpPortsSection, key, config.UdpPort);
+            while (udpPorts.Count < ports.Count)
+            {
+                udpPorts.Add(config.UdpPort);
+            }
+
             config.SentencePorts[id] = ports[0];
             config.SentencePortRows[id] = ports;
+            config.SentenceUdpPortRows[id] = udpPorts;
         }
 
         foreach ((string portName, string baudText) in ini.GetSectionValues(BaudSection))
@@ -116,7 +143,8 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         ini.Set(GpsSection, "STOP BIT", ReverseMapStopBits(StopBits).ToString());
         ini.Set(GpsSection, "DATA BIT", DataBits.ToString());
         ini.Set(GpsSection, "PARITY CHECK", ReverseMapParity(Parity).ToString());
-        ini.Set(GpsSection, "SEND FLAG", ((uint)BuildSendFlag(items)).ToString());
+        ini.Set(GpsSection, "SEND FLAG", ((uint)BuildComSendFlag(items)).ToString());
+        ini.Set(GpsSection, "UDP SEND FLAG", ((uint)BuildUdpSendFlag(items)).ToString());
         ini.Set(GpsSection, "RIGHT RPM", RightRpm ? "1" : "0");
         ini.Set(GpsSection, "TRUE WIND", TrueWind ? "1" : "0");
         ini.Set(GpsSection, "Magnetic", UseHdmOutput ? "1" : "0");
@@ -124,6 +152,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         ini.Set(ConfigSection, "USE UDP", UseUdp ? "1" : "0");
         ini.Set(SocketSection, "USE UDP", UseUdp ? "1" : "0");
         ini.Set(SocketSection, "SEND PORT", NormalizeUdpPort(UdpPort).ToString());
+        ini.Set(ConfigSection, ProjectKey, SerializeProjectType(ProjectType));
 
         foreach ((string portName, int baudRate) in PortBaudRates.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
         {
@@ -148,6 +177,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
 
                 string? rowKey = index == 1 ? key : $"{key}#{index}";
                 ini.Set(PortsSection, rowKey, item.PortName);
+                ini.Set(UdpPortsSection, rowKey, NormalizeSentenceUdpPort(item.UdpPort).ToString());
                 index++;
             }
         }
@@ -155,10 +185,21 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         ini.Save(SavePath);
     }
 
-    private static NmeaSendFlag BuildSendFlag(IEnumerable<SentenceItem> items)
+    private static NmeaSendFlag BuildComSendFlag(IEnumerable<SentenceItem> items)
     {
         NmeaSendFlag result = 0;
-        foreach (SentenceItem item in items.Where(item => item.IsEnabled))
+        foreach (SentenceItem item in items.Where(item => item.IsComEnabled))
+        {
+            result |= item.Flag;
+        }
+
+        return result;
+    }
+
+    private static NmeaSendFlag BuildUdpSendFlag(IEnumerable<SentenceItem> items)
+    {
+        NmeaSendFlag result = 0;
+        foreach (SentenceItem item in items.Where(item => item.IsUdpEnabled))
         {
             result |= item.Flag;
         }
@@ -203,6 +244,27 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         return ports;
     }
 
+    private static List<int> LoadSentenceUdpPorts(IIniFileService ini, string section, string key, int defaultUdpPort)
+    {
+        const string missing = "__MISSING__";
+        List<int> ports = new List<int>();
+        string firstPort = ini.Get(section, key, missing);
+        ports.Add(ParseSentenceUdpPort(firstPort, defaultUdpPort));
+
+        for (int index = 2; ; index++)
+        {
+            string port = ini.Get(section, $"{key}#{index}", missing);
+            if (port == missing)
+            {
+                break;
+            }
+
+            ports.Add(ParseSentenceUdpPort(port, defaultUdpPort));
+        }
+
+        return ports;
+    }
+
     private static int PortNumber(string portName)
     {
         string digits = new string(portName.Where(char.IsDigit).ToArray());
@@ -212,6 +274,55 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     private static int NormalizeUdpPort(int port)
     {
         return port is >= 1 and <= 65535 ? port : 40014;
+    }
+
+    private static int ParseSentenceUdpPort(string? value, int fallbackPort)
+    {
+        if (int.TryParse(value, out int port) && port is >= 1 and <= 65535)
+        {
+            return port;
+        }
+
+        return NormalizeUdpPort(fallbackPort);
+    }
+
+    private static int NormalizeSentenceUdpPort(int port)
+    {
+        return port is >= 1 and <= 65535 ? port : 40014;
+    }
+
+    private static ProjectType ParseProjectType(string value)
+    {
+        string normalized = new string((value ?? string.Empty)
+            .Trim()
+            .ToUpperInvariant()
+            .Where(char.IsLetterOrDigit)
+            .ToArray());
+
+        if (normalized.Length == 0)
+        {
+            return global::NMEASender.Wpf.Models.ProjectType.PS2603;
+        }
+
+        return normalized switch
+        {
+            "PS603" or "PS2603" => global::NMEASender.Wpf.Models.ProjectType.PS2603,
+            "PS514" or "PS2514" => global::NMEASender.Wpf.Models.ProjectType.PS2514,
+            "PS404A" or "PS2404A" => global::NMEASender.Wpf.Models.ProjectType.PS2404A,
+            _ when Enum.TryParse(normalized, ignoreCase: true, out ProjectType parsed) => parsed,
+            _ => global::NMEASender.Wpf.Models.ProjectType.PS2603
+        };
+    }
+
+    private static string SerializeProjectType(ProjectType projectType)
+    {
+        return projectType switch
+        {
+            global::NMEASender.Wpf.Models.ProjectType.PS2603 => "PS603",
+            global::NMEASender.Wpf.Models.ProjectType.PS2514 => "PS2514",
+            global::NMEASender.Wpf.Models.ProjectType.PS2404A => "PS2404A",
+            _ => projectType.ToString()
+        };
     }
 
     private static bool TryParseBaudRate(string value, out int baudRate)

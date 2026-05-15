@@ -22,7 +22,7 @@ public sealed class SentenceComposerService : ISentenceComposerService
     {
         if (item.Id == NmeaSentenceId.Vtg && isIosSource)
         {
-            string sentence = BuildIosVtgSentence(data);
+            string sentence = BuildIosVtgSentence(data, options);
             item.PrimaryText = sentence.TrimEnd();
             item.SecondaryText = string.Empty;
             return new[] { sentence };
@@ -52,7 +52,7 @@ public sealed class SentenceComposerService : ISentenceComposerService
         };
     }
 
-    private string BuildIosVtgSentence(NmeaDataDto data)
+    private string BuildIosVtgSentence(NmeaDataDto data, NmeaBuildOptions options)
     {
         double waterLongitudinal = data.LongitudinalSpeedMps - data.CurrentDrift * Math.Cos((data.Heading - data.CurrentSet) * NmeaConstants.ToRadians);
         double waterKnots = waterLongitudinal * 3600.0 / NmeaConstants.NauticalMileMeters;
@@ -68,6 +68,6 @@ public sealed class SentenceComposerService : ISentenceComposerService
             waterKmh = _lastVtgKmh;
         }
 
-        return _sentenceBuilder.BuildVtgSentence(data.GyroHeading, data.MagneticVariation, waterKnots, waterKmh);
+        return _sentenceBuilder.BuildVtgSentence(data.GyroHeading, data.MagneticVariation, waterKnots, waterKmh, options);
     }
 }
