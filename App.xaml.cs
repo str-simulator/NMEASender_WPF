@@ -35,6 +35,9 @@ public partial class App : Application
         services.AddSingleton<IBaudRateSettingService, BaudRateSettingService>();
         services.AddSingleton<IApplicationLifecycleService, ApplicationLifecycleService>();
 
+        services.AddSingleton<MainStateStore>();
+        services.AddSingleton<IMainWorkflowService, MainWorkflowService>();
+
         services.AddTransient<MainViewModel>();
         services.AddTransient<MainWindow>();
 

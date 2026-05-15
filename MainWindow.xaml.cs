@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using NMEASender.Wpf.ViewModels;
 
 namespace NMEASender.Wpf;
@@ -9,5 +9,15 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        if (DataContext is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+
+        base.OnClosed(e);
     }
 }

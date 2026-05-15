@@ -216,7 +216,11 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
         {
             if (_outputChannelService.TrySendUdp(sentence, udpPort, out string? error))
             {
-                addLog($"UDP:{udpPort} {sentence.TrimEnd()}");
+                if (item.Id != NmeaSentenceId.STR)
+                {
+                    addLog($"UDP:{udpPort} {sentence.TrimEnd()}");
+                }
+
                 continue;
             }
 

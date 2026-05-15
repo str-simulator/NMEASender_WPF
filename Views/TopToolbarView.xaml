@@ -76,11 +76,14 @@
             <StackPanel Grid.Column="7"
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
-                <CheckBox Content="Use UDP" IsChecked="{Binding UseUdp}" />
+                <TextBlock Style="{StaticResource ToolbarLabelTextStyle}" Text="UDP" />
                 <TextBox Width="78"
                          Margin="8,0,0,0"
-                         IsEnabled="{Binding UseUdp}"
                          Text="{Binding UdpPortText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Margin="8,0,0,0"
+                        Command="{Binding ApplyDefaultUdpPortCommand}"
+                        Content="APPLY"
+                        Style="{StaticResource ToolbarButtonStyle}" />
             </StackPanel>
 
             <Button Grid.Column="9"

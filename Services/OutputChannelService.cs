@@ -1,4 +1,5 @@
 ﻿using NMEASender.Wpf.Models;
+using System.IO.Ports;
 using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services;
@@ -85,6 +86,41 @@ public sealed class OutputChannelService : IOutputChannelService
     public void CloseUdp()
     {
         _udpSender.Close();
+    }
+
+    public bool TryOpenCom(
+        string portName,
+        int defaultBaudRate,
+        IReadOnlyDictionary<string, int>? portBaudRates,
+        int dataBits,
+        Parity parity,
+        StopBits stopBits,
+        out string? error)
+    {
+        error = string.Empty;
+        string normalizedPort = NormalizePortName(portName);
+        if (string.IsNullOrWhiteSpace(normalizedPort))
+        {
+            error = "COM port is not selected.";
+            return false;
+        }
+
+        if (_openPorts.Contains(normalizedPort))
+        {
+            return true;
+        }
+
+        _serialPortHub.Configure(defaultBaudRate, portBaudRates, dataBits, parity, stopBits);
+        bool success = _serialPortHub.Open(normalizedPort, out string serialError);
+        if (success)
+        {
+            _openPorts.Add(normalizedPort);
+            return true;
+        }
+
+        error = serialError;
+        _openPorts.Remove(normalizedPort);
+        return false;
     }
 
     public bool TryWriteCom(string portName, string sentence, out string? error)

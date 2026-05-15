@@ -1,5 +1,4 @@
 using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services;
 
 namespace NMEASender.Wpf.Services.Interfaces;
 

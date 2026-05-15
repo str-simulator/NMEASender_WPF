@@ -1,5 +1,7 @@
 ﻿using NMEASender.Wpf.Models;
 
+using System.IO.Ports;
+
 namespace NMEASender.Wpf.Services.Interfaces;
 
 public interface IOutputChannelService : IDisposable
@@ -17,6 +19,15 @@ public interface IOutputChannelService : IDisposable
     bool TryOpenUdp(int udpPort, out string? error);
 
     void CloseUdp();
+
+    bool TryOpenCom(
+        string portName,
+        int defaultBaudRate,
+        IReadOnlyDictionary<string, int>? portBaudRates,
+        int dataBits,
+        Parity parity,
+        StopBits stopBits,
+        out string? error);
 
     bool TryWriteCom(string portName, string sentence, out string? error);
 
