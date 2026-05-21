@@ -8,7 +8,7 @@ public interface INmeaTransmissionService
 
     void Stop(bool wasRunning, Action<string> addLog);
 
-    void HandleUdpToggleDuringRun(bool isRunning, bool isOpening, bool useUdp, int udpPort, Action<string> addLog);
+    void HandleUdpToggleDuringRun(bool isRunning, bool isOpening, bool useUdp, UdpTransportOptions options, Action<string> addLog);
 
     void DispatchTick(TransmissionTickContext context, Action<string> addLog, Action stopAction);
 }

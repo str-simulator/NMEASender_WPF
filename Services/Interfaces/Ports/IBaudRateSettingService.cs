@@ -8,6 +8,10 @@ public interface IBaudRateSettingService
         IReadOnlyDictionary<string, int> currentPortBaudRates,
         IReadOnlyList<int> baudRateOptions,
         IReadOnlyList<SentenceUdpPortSetting> currentSentenceUdpPorts,
+        UdpTransportOptions currentUdpTransportOptions,
+        bool supportsPerSentenceMulticastAddress,
         out IReadOnlyDictionary<string, int> updatedPortBaudRates,
-        out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts);
+        out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts,
+        out IReadOnlyDictionary<string, string> updatedSentenceUdpAddresses,
+        out UdpTransportOptions updatedUdpTransportOptions);
 }

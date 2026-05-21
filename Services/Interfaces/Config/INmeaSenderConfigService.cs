@@ -29,6 +29,8 @@ public interface INmeaSenderConfigService
 
     int UdpPort { get; set; }
 
+    UdpTransportOptions UdpTransportOptions { get; set; }
+
     ProjectType ProjectType { get; set; }
 
     NmeaSendFlag SendFlag { get; set; }
@@ -40,6 +42,8 @@ public interface INmeaSenderConfigService
     Dictionary<NmeaSentenceId, List<string>> SentencePortRows { get; }
 
     Dictionary<NmeaSentenceId, List<int>> SentenceUdpPortRows { get; }
+
+    Dictionary<NmeaSentenceId, List<string>> SentenceUdpAddressRows { get; }
 
     Dictionary<string, int> PortBaudRates { get; }
 

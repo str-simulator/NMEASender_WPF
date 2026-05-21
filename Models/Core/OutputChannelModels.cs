@@ -10,7 +10,7 @@ public sealed record OutputOpenRequest(
     Parity Parity,
     StopBits StopBits,
     bool UseUdp,
-    int UdpPort);
+    UdpTransportOptions UdpTransportOptions);
 
 public sealed record PortOpenOutcome(string PortName, bool Success, string? Error);
 

@@ -1,7 +1,7 @@
 namespace NMEASender.Wpf.Models;
 
 [Flags]
-public enum NmeaSendFlag : uint
+public enum NmeaSendFlag : ulong
 {
     Rmc = 0x00000001,
     Gga = 0x00000002,
@@ -29,6 +29,16 @@ public enum NmeaSendFlag : uint
     Ttm = 0x00800000,
     Vdo = 0x01000000,
     STR = 0x10000000,
+    Vhw = 0x0000000100000000,
+    Dtm = 0x0000000200000000,
+    Vdr = 0x0000000400000000,
+    Ths = 0x0000000800000000,
+    Mws = 0x0000001000000000,
+    Mwh = 0x0000002000000000,
+    Gpdtm = 0x0000004000000000,
+    Htd = 0x0000008000000000,
+    Vdvbw = 0x0000010000000000,
+    Ttd = 0x0000020000000000,
     Rpm = RpmPort // legacy alias
 }
 
@@ -52,10 +62,21 @@ public enum NmeaSentenceId
     Etl,
     Cur,
     Mda,
+    Ttm,
     Trc,
     Trd,
     Hpm,
     Hrm,
+    Vhw,
+    Dtm,
+    Vdr,
+    Ths,
+    Mws,
+    Mwh,
+    Gpdtm,
+    Htd,
+    Vdvbw,
+    Ttd,
     Vdm,
     Vdo,
     STR

@@ -7,6 +7,7 @@ public sealed record TransmissionStartContext(
     IReadOnlyList<string> EnabledPorts,
     bool UseUdp,
     int UdpPort,
+    UdpTransportOptions UdpTransportOptions,
     bool IsIosSource);
 
 public sealed record TransmissionStartResult(
@@ -18,4 +19,5 @@ public sealed record TransmissionTickContext(
     NmeaDataDto Data,
     bool IsIosSource,
     NmeaBuildOptions BuildOptions,
-    int DefaultUdpPort);
+    int DefaultUdpPort,
+    UdpTransportOptions UdpTransportOptions);

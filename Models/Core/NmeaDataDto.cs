@@ -32,7 +32,13 @@ public sealed class NmeaDataDto
     public double WaveDirection { get; set; } = 0.0;
     public double WaveHeight { get; set; } = 0.0;
     public double OwnshipDraft { get; set; } = 3.0;
+    public double OwnshipLength { get; set; } = 0.0;
     public double HeightTide { get; set; } = 0.0;
+    public double DatumOffsetLatitude { get; set; } = 0.0;
+    public double DatumOffsetLongitude { get; set; } = 0.0;
+    public int KoseMode { get; set; } = 0;
+    public double KoseSogKnots { get; set; } = 0.0;
+    public double KoseCog { get; set; } = 0.0;
     public double ThrustCommandBow { get; set; } = 0.0;
     public double ThrustCommandStern { get; set; } = 0.0;
     public double ThrusterThrustBow { get; set; } = 0.0;

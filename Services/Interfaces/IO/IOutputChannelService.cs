@@ -16,7 +16,7 @@ public interface IOutputChannelService : IDisposable
 
     void CloseAll();
 
-    bool TryOpenUdp(int udpPort, out string? error);
+    bool TryOpenUdp(UdpTransportOptions options, out string? error);
 
     void CloseUdp();
 
@@ -31,7 +31,7 @@ public interface IOutputChannelService : IDisposable
 
     bool TryWriteCom(string portName, string sentence, out string? error);
 
-    bool TrySendUdp(string sentence, int udpPort, out string? error);
+    bool TrySendUdp(string sentence, int udpPort, string? udpAddress, out string? error);
 
     void MarkComPortClosed(string portName);
 }

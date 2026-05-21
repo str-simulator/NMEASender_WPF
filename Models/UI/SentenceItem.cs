@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Net;
+using System.Net.Sockets;
 
 namespace NMEASender.Wpf.Models;
 
@@ -20,6 +22,9 @@ public sealed partial class SentenceItem : ObservableObject
     private int _udpPort;
 
     [ObservableProperty]
+    private string _udpAddress = string.Empty;
+
+    [ObservableProperty]
     private string _primaryText = string.Empty;
 
     [ObservableProperty]
@@ -33,6 +38,7 @@ public sealed partial class SentenceItem : ObservableObject
         bool isComEnabled,
         bool isUdpEnabled,
         int udpPort,
+        string udpAddress = "",
         bool hasSecondary = false,
         bool isDuplicateRow = false)
     {
@@ -43,6 +49,7 @@ public sealed partial class SentenceItem : ObservableObject
         _isComEnabled = isComEnabled;
         _isUdpEnabled = isUdpEnabled;
         _udpPort = NormalizeUdpPort(udpPort);
+        _udpAddress = NormalizeUdpAddress(udpAddress);
         HasSecondary = hasSecondary;
         _isDuplicateRow = isDuplicateRow;
     }
@@ -73,8 +80,34 @@ public sealed partial class SentenceItem : ObservableObject
         }
     }
 
+    partial void OnUdpAddressChanged(string value)
+    {
+        string normalized = NormalizeUdpAddress(value);
+        if (!string.Equals(value, normalized, StringComparison.Ordinal))
+        {
+            UdpAddress = normalized;
+        }
+    }
+
     private static int NormalizeUdpPort(int port)
     {
         return port is >= 1 and <= 65535 ? port : 40014;
+    }
+
+    private static string NormalizeUdpAddress(string? value)
+    {
+        string candidate = (value ?? string.Empty).Trim();
+        if (candidate.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        if (IPAddress.TryParse(candidate, out IPAddress? address) &&
+            address.AddressFamily == AddressFamily.InterNetwork)
+        {
+            return candidate;
+        }
+
+        return string.Empty;
     }
 }
