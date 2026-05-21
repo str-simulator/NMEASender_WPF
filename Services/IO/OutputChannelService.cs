@@ -65,7 +65,7 @@ public sealed class OutputChannelService : IOutputChannelService
 
         if (request.UseUdp)
         {
-            udpOpenSuccess = _udpSender.Open(request.UdpPort, out udpOpenError);
+            udpOpenSuccess = _udpSender.Open(request.UdpTransportOptions, out udpOpenError);
         }
 
         return new OutputOpenResult(openResults, udpOpenSuccess, udpOpenError);
@@ -78,9 +78,9 @@ public sealed class OutputChannelService : IOutputChannelService
         _openPorts.Clear();
     }
 
-    public bool TryOpenUdp(int udpPort, out string? error)
+    public bool TryOpenUdp(UdpTransportOptions options, out string? error)
     {
-        return _udpSender.Open(udpPort, out error);
+        return _udpSender.Open(options, out error);
     }
 
     public void CloseUdp()
@@ -141,9 +141,9 @@ public sealed class OutputChannelService : IOutputChannelService
         return success;
     }
 
-    public bool TrySendUdp(string sentence, int udpPort, out string? error)
+    public bool TrySendUdp(string sentence, int udpPort, string? udpAddress, out string? error)
     {
-        return _udpSender.Send(sentence, udpPort, out error);
+        return _udpSender.Send(sentence, udpPort, udpAddress, out error);
     }
 
     public void MarkComPortClosed(string portName)

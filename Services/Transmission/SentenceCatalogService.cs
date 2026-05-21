@@ -5,6 +5,9 @@ namespace NMEASender.Wpf.Services;
 
 public sealed class SentenceCatalogService : ISentenceCatalogService
 {
+    private readonly IReadOnlyDictionary<ProjectType, IProjectSentenceCatalogPolicy> _projectPolicies;
+    private readonly IProjectSentenceCatalogPolicy _fallbackPolicy;
+
     private static readonly SentenceTemplate[] GpsTemplates =
     [
         new(NmeaSentenceId.Gga, NmeaSendFlag.Gga, "$GPGGA"),
@@ -18,14 +21,24 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
     [
         new(NmeaSentenceId.Hdt, NmeaSendFlag.Hdt, "$HEHDT"),
         new(NmeaSentenceId.Vbw, NmeaSendFlag.Vbw, "$--VBW"),
+        new(NmeaSentenceId.Vdvbw, NmeaSendFlag.Vdvbw, "$VDVBW", RequiredProjectType: ProjectType.PS2404A),
         new(NmeaSentenceId.Rot, NmeaSendFlag.Rot, "$--ROT"),
         new(NmeaSentenceId.Rsa, NmeaSendFlag.Rsa, "$--RSA"),
         new(NmeaSentenceId.RpmPort, NmeaSendFlag.RpmPort, "$--RPM(PORT)"),
         new(NmeaSentenceId.RpmStbd, NmeaSendFlag.RpmStbd, "$--RPM(STBD)"),
         new(NmeaSentenceId.Mwv, NmeaSendFlag.Mwv, "$--MWV"),
+        new(NmeaSentenceId.Ths, NmeaSendFlag.Ths, "$HETHS", RequiredProjectType: ProjectType.PS2404A),
+        new(NmeaSentenceId.Mws, NmeaSendFlag.Mws, "$WIMWS", RequiredProjectType: ProjectType.PS2404A),
+        new(NmeaSentenceId.Mwh, NmeaSendFlag.Mwh, "$WIMWH", RequiredProjectType: ProjectType.PS2404A),
         new(NmeaSentenceId.Hdg, NmeaSendFlag.Hdg, "$--HDG"),
+        new(NmeaSentenceId.Vhw, NmeaSendFlag.Vhw, "$VDVHW", RequiredProjectType: ProjectType.PS2404A),
+        new(NmeaSentenceId.Vdr, NmeaSendFlag.Vdr, "$VDVDR", RequiredProjectType: ProjectType.PS2404A),
         new(NmeaSentenceId.Dpt, NmeaSendFlag.Dpt, "$--DPT"),
         new(NmeaSentenceId.Dbt, NmeaSendFlag.Dbt, "$--DBT"),
+        new(NmeaSentenceId.Dtm, NmeaSendFlag.Dtm, "$VDDTM", RequiredProjectType: ProjectType.PS2404A),
+        new(NmeaSentenceId.Gpdtm, NmeaSendFlag.Gpdtm, "$GPDTM", RequiredProjectType: ProjectType.PS2404A),
+        new(NmeaSentenceId.Htd, NmeaSendFlag.Htd, "$--HTD", RequiredProjectType: ProjectType.PS2404A),
+        new(NmeaSentenceId.Ttm, NmeaSendFlag.Ttm, "$RATTM", RequiredProjectType: ProjectType.PS2404A),
         new(NmeaSentenceId.Etl, NmeaSendFlag.Etl, "$--ETL", HasSecondary: true),
         new(NmeaSentenceId.Cur, NmeaSendFlag.Cur, "$--CUR"),
         new(NmeaSentenceId.Mda, NmeaSendFlag.Mda, "$--MDA"),
@@ -42,6 +55,27 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
         new(NmeaSentenceId.STR, NmeaSendFlag.STR, "$--STR", EnabledOverride: true)
     ];
 
+    public SentenceCatalogService(IEnumerable<IProjectSentenceCatalogPolicy> projectPolicies)
+    {
+        if (projectPolicies is null)
+        {
+            throw new ArgumentNullException(nameof(projectPolicies));
+        }
+
+        List<IProjectSentenceCatalogPolicy> policies = projectPolicies.ToList();
+        if (policies.Count == 0)
+        {
+            throw new InvalidOperationException("At least one sentence catalog policy must be registered.");
+        }
+
+        _projectPolicies = policies
+            .GroupBy(policy => policy.ProjectType)
+            .ToDictionary(group => group.Key, group => group.First());
+        _fallbackPolicy = _projectPolicies.TryGetValue(ProjectType.PS2603, out IProjectSentenceCatalogPolicy? ps2603Policy)
+            ? ps2603Policy
+            : policies[0];
+    }
+
     public void Populate(
         ICollection<SentenceItem> gpsSentences,
         ICollection<SentenceItem> otherSentences,
@@ -53,19 +87,27 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
         otherSentences.Clear();
         internalSentences.Clear();
 
-        AddTemplates(gpsSentences, GpsTemplates, config, pickAvailablePort);
-        AddTemplates(otherSentences, OtherTemplates, config, pickAvailablePort);
-        AddTemplates(internalSentences, InternalTemplates, config, pickAvailablePort);
+        IProjectSentenceCatalogPolicy policy = ResolvePolicy(config.ProjectType);
+
+        AddTemplates(gpsSentences, GpsTemplates, config, pickAvailablePort, policy);
+        AddTemplates(otherSentences, OtherTemplates, config, pickAvailablePort, policy);
+        AddTemplates(internalSentences, InternalTemplates, config, pickAvailablePort, policy);
     }
 
     private static void AddTemplates(
         ICollection<SentenceItem> target,
         IEnumerable<SentenceTemplate> templates,
         INmeaSenderConfigService config,
-        Func<string, string> pickAvailablePort)
+        Func<string, string> pickAvailablePort,
+        IProjectSentenceCatalogPolicy policy)
     {
         foreach (SentenceTemplate template in templates)
         {
+            if (!policy.IsTemplateVisible(template.RequiredProjectType))
+            {
+                continue;
+            }
+
             bool isComEnabled = template.EnabledOverride ?? ((config.SendFlag & template.Flag) == template.Flag);
             bool isUdpEnabled = template.EnabledOverride ?? ((config.UdpSendFlag & template.Flag) == template.Flag);
             string defaultPort = config.SentencePorts.TryGetValue(template.Id, out string? configuredPort) ? configuredPort : config.DefaultPort;
@@ -75,12 +117,16 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
             List<int>? configuredUdpPorts = config.SentenceUdpPortRows.TryGetValue(template.Id, out List<int>? udpPorts) && udpPorts.Count > 0
                 ? udpPorts
                 : new List<int> { config.UdpPort };
-            int rowCount = Math.Max(configuredPorts.Count, configuredUdpPorts.Count);
+            List<string>? configuredUdpAddresses = config.SentenceUdpAddressRows.TryGetValue(template.Id, out List<string>? udpAddresses) && udpAddresses.Count > 0
+                ? udpAddresses
+                : new List<string> { config.UdpTransportOptions.MulticastAddress };
+            int rowCount = Math.Max(configuredPorts.Count, Math.Max(configuredUdpPorts.Count, configuredUdpAddresses.Count));
 
             for (int index = 0; index < rowCount; index++)
             {
                 string port = ResolveConfiguredPort(configuredPorts, index, defaultPort);
                 int udpPort = ResolveUdpPort(configuredUdpPorts, index, config.UdpPort);
+                string udpAddress = ResolveUdpAddress(configuredUdpAddresses, index, config.UdpTransportOptions.MulticastAddress);
                 bool isDuplicateRow = index > 0;
                 target.Add(new SentenceItem(
                     template.Id,
@@ -90,10 +136,18 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
                     isComEnabled,
                     isUdpEnabled,
                     udpPort,
+                    udpAddress,
                     template.HasSecondary,
                     isDuplicateRow));
             }
         }
+    }
+
+    private IProjectSentenceCatalogPolicy ResolvePolicy(ProjectType projectType)
+    {
+        return _projectPolicies.TryGetValue(projectType, out IProjectSentenceCatalogPolicy? policy)
+            ? policy
+            : _fallbackPolicy;
     }
 
     private static string ResolveConfiguredPort(IReadOnlyList<string> configuredPorts, int index, string defaultPort)
@@ -126,10 +180,26 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
         return defaultUdpPort is >= 1 and <= 65535 ? defaultUdpPort : 40014;
     }
 
+    private static string ResolveUdpAddress(IReadOnlyList<string> configuredUdpAddresses, int index, string defaultUdpAddress)
+    {
+        if (index < configuredUdpAddresses.Count && !string.IsNullOrWhiteSpace(configuredUdpAddresses[index]))
+        {
+            return configuredUdpAddresses[index];
+        }
+
+        if (configuredUdpAddresses.Count > 0 && !string.IsNullOrWhiteSpace(configuredUdpAddresses[0]))
+        {
+            return configuredUdpAddresses[0];
+        }
+
+        return defaultUdpAddress;
+    }
+
     private sealed record SentenceTemplate(
         NmeaSentenceId Id,
         NmeaSendFlag Flag,
         string Label,
         bool HasSecondary = false,
-        bool? EnabledOverride = null);
+        bool? EnabledOverride = null,
+        ProjectType? RequiredProjectType = null);
 }

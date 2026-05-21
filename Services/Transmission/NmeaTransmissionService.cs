@@ -9,15 +9,18 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
     private readonly IOutputChannelService _outputChannelService;
     private readonly ISentenceComposerService _sentenceComposer;
     private readonly IPortBaudRateService _portBaudRateService;
+    private readonly IProjectSentenceFrameService _projectSentenceFrameService;
 
     public NmeaTransmissionService(
         IOutputChannelService outputChannelService,
         ISentenceComposerService sentenceComposer,
-        IPortBaudRateService portBaudRateService)
+        IPortBaudRateService portBaudRateService,
+        IProjectSentenceFrameService projectSentenceFrameService)
     {
         _outputChannelService = outputChannelService ?? throw new ArgumentNullException(nameof(outputChannelService));
         _sentenceComposer = sentenceComposer ?? throw new ArgumentNullException(nameof(sentenceComposer));
         _portBaudRateService = portBaudRateService ?? throw new ArgumentNullException(nameof(portBaudRateService));
+        _projectSentenceFrameService = projectSentenceFrameService ?? throw new ArgumentNullException(nameof(projectSentenceFrameService));
     }
 
     public async Task<TransmissionStartResult> StartAsync(TransmissionStartContext context, Action<string> addLog)
@@ -26,6 +29,8 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
         {
             throw new ArgumentNullException(nameof(context));
         }
+
+        _projectSentenceFrameService.Reset(context.Config.ProjectType, context.Config.RightRpm);
 
         if (context.EnabledPorts.Count == 0 && !context.UseUdp)
         {
@@ -47,7 +52,7 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
                 context.Config.Parity,
                 context.Config.StopBits,
                 context.UseUdp,
-                context.UdpPort);
+                context.UdpTransportOptions);
 
             OutputOpenResult openResult = await _outputChannelService.OpenAsync(request);
             foreach (PortOpenOutcome result in openResult.PortResults)
@@ -68,11 +73,11 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
             {
                 if (openResult.UdpOpenSuccess)
                 {
-                    addLog($"UDP Broadcast Open: {context.UdpPort}");
+                    addLog($"UDP {context.UdpTransportOptions.Mode} Open: {context.UdpPort}");
                 }
                 else
                 {
-                    addLog($"UDP Broadcast Open Fail: {openResult.UdpOpenError}");
+                    addLog($"UDP {context.UdpTransportOptions.Mode} Open Fail: {openResult.UdpOpenError}");
                 }
             }
         }
@@ -82,13 +87,13 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
 
             if (context.UseUdp)
             {
-                if (_outputChannelService.TryOpenUdp(context.UdpPort, out string? udpError))
+                if (_outputChannelService.TryOpenUdp(context.UdpTransportOptions, out string? udpError))
                 {
-                    addLog($"UDP Broadcast Open: {context.UdpPort}");
+                    addLog($"UDP {context.UdpTransportOptions.Mode} Open: {context.UdpPort}");
                 }
                 else
                 {
-                    addLog($"UDP Broadcast Open Fail: {udpError}");
+                    addLog($"UDP {context.UdpTransportOptions.Mode} Open Fail: {udpError}");
                 }
             }
         }
@@ -115,7 +120,7 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
         }
     }
 
-    public void HandleUdpToggleDuringRun(bool isRunning, bool isOpening, bool useUdp, int udpPort, Action<string> addLog)
+    public void HandleUdpToggleDuringRun(bool isRunning, bool isOpening, bool useUdp, UdpTransportOptions options, Action<string> addLog)
     {
         if (!isRunning || isOpening)
         {
@@ -127,7 +132,7 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
             if (_outputChannelService.IsUdpOpen)
             {
                 _outputChannelService.CloseUdp();
-                addLog("UDP Broadcast Close");
+                addLog("UDP Close");
             }
 
             return;
@@ -138,18 +143,22 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
             return;
         }
 
-        if (_outputChannelService.TryOpenUdp(udpPort, out string? udpError))
+        if (_outputChannelService.TryOpenUdp(options, out string? udpError))
         {
-            addLog($"UDP Broadcast Open: {udpPort}");
+            addLog($"UDP {options.Mode} Open");
             return;
         }
 
-        addLog($"UDP Broadcast Open Fail: {udpError}");
+        addLog($"UDP {options.Mode} Open Fail: {udpError}");
     }
 
     public void DispatchTick(TransmissionTickContext context, Action<string> addLog, Action stopAction)
     {
-        foreach (SentenceItem item in context.EnabledSentences)
+        IReadOnlyList<SentenceItem> dispatchSentences = _projectSentenceFrameService.SelectForDispatch(
+            context.EnabledSentences,
+            context.BuildOptions.ProjectType);
+
+        foreach (SentenceItem item in dispatchSentences)
         {
             if (!_sentenceComposer.ShouldSend(item, context.IsIosSource, context.Data))
             {
@@ -161,12 +170,16 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
                 context.Data,
                 context.IsIosSource,
                 context.BuildOptions);
+            IReadOnlyList<string> framedSentences = _projectSentenceFrameService.ExpandForTransmit(
+                sentences,
+                item.Id,
+                context.BuildOptions.ProjectType);
 
             if (item.IsComEnabled &&
                 !string.IsNullOrWhiteSpace(item.PortName) &&
                 _outputChannelService.IsComPortOpen(item.PortName))
             {
-                if (!SendToCom(item, sentences, addLog, stopAction))
+                if (!SendToCom(item, framedSentences, addLog, stopAction))
                 {
                     continue;
                 }
@@ -178,8 +191,15 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
 
             if (item.IsUdpEnabled && _outputChannelService.IsUdpOpen)
             {
-                int udpPort = item.UdpPort is >= 1 and <= 65535 ? item.UdpPort : context.DefaultUdpPort;
-                SendToUdp(item, sentences, udpPort, addLog, stopAction);
+                int udpPort = _projectSentenceFrameService.ResolveUdpPort(
+                    item,
+                    context.DefaultUdpPort,
+                    context.BuildOptions.ProjectType);
+                string? udpAddress = _projectSentenceFrameService.ResolveUdpAddress(
+                    item,
+                    context.UdpTransportOptions,
+                    context.BuildOptions.ProjectType);
+                SendToUdp(item, framedSentences, udpPort, udpAddress, addLog, stopAction);
             }
         }
     }
@@ -210,21 +230,25 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
         return true;
     }
 
-    private void SendToUdp(SentenceItem item, IReadOnlyList<string> sentences, int udpPort, Action<string> addLog, Action stopAction)
+    private void SendToUdp(SentenceItem item, IReadOnlyList<string> sentences, int udpPort, string? udpAddress, Action<string> addLog, Action stopAction)
     {
+        string udpPrefix = string.IsNullOrWhiteSpace(udpAddress)
+            ? $"UDP:{udpPort}"
+            : $"UDP:{udpAddress}:{udpPort}";
+
         foreach (string sentence in sentences)
         {
-            if (_outputChannelService.TrySendUdp(sentence, udpPort, out string? error))
+            if (_outputChannelService.TrySendUdp(sentence, udpPort, udpAddress, out string? error))
             {
                 if (item.Id != NmeaSentenceId.STR)
                 {
-                    addLog($"UDP:{udpPort} {sentence.TrimEnd()}");
+                    addLog($"{udpPrefix} {sentence.TrimEnd()}");
                 }
 
                 continue;
             }
 
-            addLog($"UDP:{udpPort} {item.Label} Send Fail: {error}");
+            addLog($"{udpPrefix} {item.Label} Send Fail: {error}");
             _outputChannelService.CloseUdp();
             StopIfNoOutputIsOpen(addLog, stopAction);
             break;

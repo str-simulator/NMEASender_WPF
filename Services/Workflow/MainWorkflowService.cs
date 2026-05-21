@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Threading;
 using NMEASender.Wpf.Models;
@@ -15,6 +17,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
     private readonly IOutputChannelService _outputChannelService;
     private readonly IPortBaudRateService _portBaudRateService;
     private readonly INmeaTransmissionService _nmeaTransmissionService;
+    private readonly IProjectSentenceFrameService _projectSentenceFrameService;
     private readonly ISharedMemoryProviderService _sharedMemoryDataProvider;
     private readonly ISentenceComposerService _sentenceComposer;
     private readonly ISentenceCatalogService _sentenceCatalog;
@@ -33,6 +36,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
         IOutputChannelService outputChannelService,
         IPortBaudRateService portBaudRateService,
         INmeaTransmissionService nmeaTransmissionService,
+        IProjectSentenceFrameService projectSentenceFrameService,
         ISharedMemoryProviderService sharedMemoryDataProvider,
         ISentenceComposerService sentenceComposer,
         ISentenceCatalogService sentenceCatalog,
@@ -46,6 +50,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
         _outputChannelService = outputChannelService ?? throw new ArgumentNullException(nameof(outputChannelService));
         _portBaudRateService = portBaudRateService ?? throw new ArgumentNullException(nameof(portBaudRateService));
         _nmeaTransmissionService = nmeaTransmissionService ?? throw new ArgumentNullException(nameof(nmeaTransmissionService));
+        _projectSentenceFrameService = projectSentenceFrameService ?? throw new ArgumentNullException(nameof(projectSentenceFrameService));
         _sharedMemoryDataProvider = sharedMemoryDataProvider ?? throw new ArgumentNullException(nameof(sharedMemoryDataProvider));
         _sentenceComposer = sentenceComposer ?? throw new ArgumentNullException(nameof(sentenceComposer));
         _sentenceCatalog = sentenceCatalog ?? throw new ArgumentNullException(nameof(sentenceCatalog));
@@ -93,12 +98,19 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 return;
             }
 
-            bool useUdp = HasEnabledUdpSentence();
-            int udpPort = 0;
-            if (useUdp && !TryGetUdpPort(out udpPort, out string? udpPortError))
+            bool hasEnabledUdpSentence = HasEnabledUdpSentence();
+            int udpPort = NormalizeUdpPort(_config.UdpPort);
+            if (hasEnabledUdpSentence && !TryGetUdpPort(out udpPort, out string? udpPortError))
             {
                 AddLog(udpPortError);
                 return;
+            }
+
+            UdpTransportOptions udpTransportOptions = _config.UdpTransportOptions.WithFallbackPort(udpPort);
+            bool useUdp = hasEnabledUdpSentence && udpTransportOptions.IsEnabled;
+            if (hasEnabledUdpSentence && !udpTransportOptions.IsEnabled)
+            {
+                AddLog("UDP transport is disabled by profile.");
             }
 
             List<SentenceItem> comEnabledSentences = State.ConfigurableSentences()
@@ -122,11 +134,14 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 return;
             }
 
+            int udpOpenPort = udpTransportOptions.ResolveTargetPort(udpPort);
+
             TransmissionStartContext startContext = new(
                 _config,
                 enabledPorts,
                 useUdp,
-                udpPort,
+                udpOpenPort,
+                udpTransportOptions,
                 State.IsIosSource);
 
             TransmissionStartResult startResult = await _nmeaTransmissionService.StartAsync(startContext, AddLog);
@@ -172,13 +187,21 @@ public sealed class MainWorkflowService : IMainWorkflowService
         RefreshPorts();
         IReadOnlyDictionary<string, int> currentPortBaudRates = GetPortBaudRatesSnapshot();
         IReadOnlyList<SentenceUdpPortSetting> currentSentenceUdpPorts = GetSentenceUdpPortSettingsSnapshot();
+        int udpFallbackPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
+            ? parsedUdpPort
+            : NormalizeUdpPort(_config.UdpPort);
+        UdpTransportOptions currentUdpTransportOptions = _config.UdpTransportOptions.WithFallbackPort(udpFallbackPort);
 
         if (!_portBaudRateSettingsDialogService.TryShow(
                 currentPortBaudRates,
                 BaudRateOptions,
                 currentSentenceUdpPorts,
+                currentUdpTransportOptions,
+                _projectSentenceFrameService.SupportsPerSentenceMulticastAddress(_config.ProjectType),
                 out IReadOnlyDictionary<string, int> updatedPortBaudRates,
-                out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts))
+                out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts,
+                out IReadOnlyDictionary<string, string> updatedSentenceUdpAddresses,
+                out UdpTransportOptions updatedUdpTransportOptions))
         {
             return;
         }
@@ -189,13 +212,33 @@ public sealed class MainWorkflowService : IMainWorkflowService
             return;
         }
 
-        if (!TryApplySentenceUdpPorts(updatedSentenceUdpPorts, out string udpError))
+        if (!TryNormalizeUdpTransportOptions(
+                updatedUdpTransportOptions,
+                out UdpTransportOptions normalizedUdpTransportOptions,
+                out string udpTransportError))
         {
-            AddLog($"Sentence UDP port setting failed: {udpError}");
+            AddLog($"UDP transport setting failed: {udpTransportError}");
             return;
         }
 
+        if (!TryApplySentenceUdpSettings(
+                updatedSentenceUdpPorts,
+                updatedSentenceUdpAddresses,
+                normalizedUdpTransportOptions.Mode,
+                out string udpError))
+        {
+            AddLog($"Sentence UDP setting failed: {udpError}");
+            return;
+        }
+
+        _config.UdpTransportOptions = normalizedUdpTransportOptions;
         SaveConfig();
+
+        if (State.IsRunning)
+        {
+            _nmeaTransmissionService.HandleUdpToggleDuringRun(State.IsRunning, State.IsOpening, false, _config.UdpTransportOptions, AddLog);
+            SyncUdpOutputStateDuringRun();
+        }
     }
 
     public void SetData()
@@ -319,16 +362,19 @@ public sealed class MainWorkflowService : IMainWorkflowService
         List<SentenceItem> enabledSentences = State.AllSentences()
             .Where(item => item.IsComEnabled || item.IsUdpEnabled)
             .ToList();
-        int defaultUdpPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
+        int requestedUdpPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
             ? parsedUdpPort
             : NormalizeUdpPort(_config.UdpPort);
+        UdpTransportOptions udpTransportOptions = _config.UdpTransportOptions.WithFallbackPort(requestedUdpPort);
+        int defaultUdpPort = udpTransportOptions.ResolveTargetPort(requestedUdpPort);
 
         TransmissionTickContext tickContext = new(
             enabledSentences,
             _data,
             State.IsIosSource,
             CurrentBuildOptions(),
-            defaultUdpPort);
+            defaultUdpPort,
+            udpTransportOptions);
 
         _nmeaTransmissionService.DispatchTick(tickContext, AddLog, Stop);
     }
@@ -340,20 +386,25 @@ public sealed class MainWorkflowService : IMainWorkflowService
             return;
         }
 
-        bool shouldUseUdp = HasEnabledUdpSentence();
+        bool hasEnabledUdpSentence = HasEnabledUdpSentence();
+        int udpFallbackPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
+            ? parsedUdpPort
+            : NormalizeUdpPort(_config.UdpPort);
+        UdpTransportOptions udpTransportOptions = _config.UdpTransportOptions.WithFallbackPort(udpFallbackPort);
+        bool shouldUseUdp = hasEnabledUdpSentence && udpTransportOptions.IsEnabled;
+
+        if (hasEnabledUdpSentence && !udpTransportOptions.IsEnabled)
+        {
+            AddLog("UDP transport is disabled by profile.");
+        }
+
         if (!shouldUseUdp)
         {
-            _nmeaTransmissionService.HandleUdpToggleDuringRun(State.IsRunning, State.IsOpening, false, 0, AddLog);
+            _nmeaTransmissionService.HandleUdpToggleDuringRun(State.IsRunning, State.IsOpening, false, udpTransportOptions, AddLog);
             return;
         }
 
-        if (!TryGetUdpPort(out int udpPort, out string udpPortError))
-        {
-            AddLog(udpPortError);
-            return;
-        }
-
-        _nmeaTransmissionService.HandleUdpToggleDuringRun(State.IsRunning, State.IsOpening, true, udpPort, AddLog);
+        _nmeaTransmissionService.HandleUdpToggleDuringRun(State.IsRunning, State.IsOpening, true, udpTransportOptions, AddLog);
     }
 
     private bool UpdateCurrentData(bool forceLog = false)
@@ -452,6 +503,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
             source.IsComEnabled,
             source.IsUdpEnabled,
             source.UdpPort,
+            source.UdpAddress,
             source.HasSecondary,
             isDuplicateRow: true)
         {
@@ -679,7 +731,8 @@ public sealed class MainWorkflowService : IMainWorkflowService
             settings.Add(new SentenceUdpPortSetting(
                 rowKey,
                 displayLabel,
-                NormalizeUdpPort(item.UdpPort)));
+                NormalizeUdpPort(item.UdpPort),
+                ResolveSentenceUdpAddress(item.UdpAddress, _config.UdpTransportOptions.MulticastAddress)));
         }
 
         return settings;
@@ -700,10 +753,18 @@ public sealed class MainWorkflowService : IMainWorkflowService
         return true;
     }
 
-    private bool TryApplySentenceUdpPorts(IReadOnlyDictionary<string, int> sentenceUdpPorts, out string error)
+    private bool TryApplySentenceUdpSettings(
+        IReadOnlyDictionary<string, int> sentenceUdpPorts,
+        IReadOnlyDictionary<string, string> sentenceUdpAddresses,
+        UdpTransportMode udpMode,
+        out string error)
     {
         error = string.Empty;
         Dictionary<string, int> normalizedUdpPorts = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> normalizedUdpAddresses = new(StringComparer.OrdinalIgnoreCase);
+        bool requireMulticastAddressValidation =
+            _projectSentenceFrameService.SupportsPerSentenceMulticastAddress(_config.ProjectType) &&
+            udpMode == UdpTransportMode.Multicast;
 
         foreach ((string rowKey, int udpPort) in sentenceUdpPorts)
         {
@@ -721,6 +782,31 @@ public sealed class MainWorkflowService : IMainWorkflowService
             normalizedUdpPorts[rowKey] = udpPort;
         }
 
+        foreach ((string rowKey, string rawAddress) in sentenceUdpAddresses)
+        {
+            if (string.IsNullOrWhiteSpace(rowKey))
+            {
+                continue;
+            }
+
+            string candidateAddress = (rawAddress ?? string.Empty).Trim();
+            if (requireMulticastAddressValidation)
+            {
+                if (!TryNormalizeMulticastAddress(candidateAddress, out string normalizedAddress))
+                {
+                    error = $"{rowKey} multicast address must be in 224.0.0.0 - 239.255.255.255.";
+                    return false;
+                }
+
+                normalizedUdpAddresses[rowKey] = normalizedAddress;
+                continue;
+            }
+
+            normalizedUdpAddresses[rowKey] = UdpTransportOptions.NormalizeAddress(
+                candidateAddress,
+                _config.UdpTransportOptions.MulticastAddress);
+        }
+
         foreach ((SentenceItem item, string rowKey, _) in EnumerateConfigurableSentenceRows())
         {
             if (!normalizedUdpPorts.TryGetValue(rowKey, out int udpPort))
@@ -729,8 +815,53 @@ public sealed class MainWorkflowService : IMainWorkflowService
             }
 
             item.UdpPort = udpPort;
+            if (normalizedUdpAddresses.TryGetValue(rowKey, out string? udpAddress) &&
+                !string.IsNullOrWhiteSpace(udpAddress))
+            {
+                item.UdpAddress = udpAddress;
+            }
         }
 
+        return true;
+    }
+
+    private bool TryNormalizeUdpTransportOptions(
+        UdpTransportOptions udpTransportOptions,
+        out UdpTransportOptions normalizedUdpTransportOptions,
+        out string error)
+    {
+        error = string.Empty;
+        normalizedUdpTransportOptions = _config.UdpTransportOptions;
+        UdpTransportMode mode = udpTransportOptions.Mode == UdpTransportMode.Multicast
+            ? UdpTransportMode.Multicast
+            : UdpTransportMode.Broadcast;
+        string multicastAddress = UdpTransportOptions.NormalizeAddress(udpTransportOptions.MulticastAddress, "225.0.0.0");
+
+        if (mode == UdpTransportMode.Multicast)
+        {
+            if (!IPAddress.TryParse(multicastAddress, out IPAddress? address) ||
+                address.AddressFamily != AddressFamily.InterNetwork)
+            {
+                error = "Multicast address must be a valid IPv4 address.";
+                return false;
+            }
+
+            if (!IsMulticastAddress(address))
+            {
+                error = "Multicast address must be in 224.0.0.0 - 239.255.255.255.";
+                return false;
+            }
+        }
+
+        int fallbackUdpPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
+            ? parsedUdpPort
+            : NormalizeUdpPort(_config.UdpPort);
+
+        normalizedUdpTransportOptions = (udpTransportOptions with
+        {
+            Mode = mode,
+            MulticastAddress = multicastAddress
+        }).WithFallbackPort(fallbackUdpPort);
         return true;
     }
 
@@ -810,6 +941,33 @@ public sealed class MainWorkflowService : IMainWorkflowService
 
         error = "UDP port must be between 1 and 65535.";
         return false;
+    }
+
+    private static bool IsMulticastAddress(IPAddress address)
+    {
+        byte[] bytes = address.GetAddressBytes();
+        return bytes.Length == 4 && bytes[0] is >= 224 and <= 239;
+    }
+
+    private static bool TryNormalizeMulticastAddress(string? value, out string normalizedAddress)
+    {
+        normalizedAddress = string.Empty;
+        string candidate = (value ?? string.Empty).Trim();
+        if (!IPAddress.TryParse(candidate, out IPAddress? address) ||
+            address.AddressFamily != AddressFamily.InterNetwork ||
+            !IsMulticastAddress(address))
+        {
+            return false;
+        }
+
+        normalizedAddress = candidate;
+        return true;
+    }
+
+    private static string ResolveSentenceUdpAddress(string? value, string fallbackAddress)
+    {
+        string candidate = (value ?? string.Empty).Trim();
+        return UdpTransportOptions.NormalizeAddress(candidate, fallbackAddress);
     }
 
     private static void ShowComOpenFailureDialog(
