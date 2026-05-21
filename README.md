@@ -15,15 +15,31 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - Sentence 행 복제/삭제(+/-)
 - COM 포트별 BaudRate 설정
 - Sentence(행)별 UDP 포트 설정
+- Sentence(행)별 UDP Multicast 주소 설정
+- 설정창 Broadcast/Multicast 모드 선택
 - START 중 COM/UDP 동적 오픈/클로즈
 - 로그 자동 하단 추적 + 사용자 스크롤 해제/복귀
 - 프로젝트 타입별(PS2603 / PS2514 / PS2404A) 송신 규칙 분기
 
-## 3. 최신 구조 업데이트
+## 3. 최신 업데이트 요약
+
+이번 업데이트는 기존 단일 로직 중심 구조를 프로젝트별 정책 기반 구조로 정리한 것이 핵심입니다.
+
+- `BaseProjectNmeaSentenceBuilder`는 공통 문장 생성/체크섬/포맷 유틸만 담당하도록 정리
+- PS2404A 전용 NMEA 문장 생성 로직을 `Ps2404aNmeaSentenceBuilder`로 분리
+- PS2603, PS2514도 각각 프로젝트 폴더 내 빌더 클래스로 분리
+- `NmeaSentenceBuilderService`는 `ProjectType` 기준으로 프로젝트별 빌더를 선택
+- `ProjectSentenceFrameService`는 프로젝트별 송신 프레임 정책을 선택
+- `SentenceCatalogService`는 프로젝트별 노출 가능한 Sentence 목록을 정책으로 필터링
+- `NMEAMultiCast.ini` 기반 Broadcast/Multicast 설정 지원
+- 문장별 UDP Port/Multicast Address 저장 및 송신 반영
+- 전역 `Use UDP` 체크박스 제거, 각 Sentence 행의 UDP 체크 상태로 송신 여부 결정
+
+## 4. 최신 구조 업데이트
 
 이번 리팩터링은 서비스 레이어뿐 아니라 **전 레이어(Models / ViewModels / Views / Services / Interfaces / Behaviors)** 에 폴더 분리를 적용했습니다.
 
-### 3.1 폴더 구조
+### 4.1 폴더 구조
 
 - `Models`
   - `Core`: NMEA/전송 핵심 모델
@@ -48,7 +64,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `Behaviors/Core`
   - 공통 Attached Behavior
 
-### 3.2 프로젝트별 분리 방식
+### 4.2 프로젝트별 분리 방식
 
 프로젝트 의존 로직은 `Services/Projects/<ProjectType>/`에 모아두고, 상위 서비스는 라우터 역할만 수행합니다.
 
@@ -61,9 +77,27 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - SEND FLAG 인코딩/디코딩: `IProjectSendFlagCodec`
 - UDP 프로필 저장소: `IProjectUdpTransportProfileStore`
 
-## 4. MVVM 구성
+### 4.3 Base와 프로젝트 구현체 역할
 
-### 4.1 View
+- `BaseProjectNmeaSentenceBuilder`
+  - 공통 NMEA 생성 로직
+  - 공통 Checksum 계산
+  - 공통 좌표/시간/월별 기상값/ETA 계산 유틸
+  - AIS Payload sentence 조립
+- `Services/Projects/PS2404A/Ps2404aNmeaSentenceBuilder.cs`
+  - PS2404A 전용 좌표 포맷
+  - PS2404A 전용 `GLL`, `RMC`, `VTG` mode indicator / KOSE 처리
+  - PS2404A 전용 `RPM`, `DPT`
+  - PS2404A 전용 `VDVBW`, `VHW`, `VDR`, `DTM`, `GPDTM`, `THS`, `MWS`, `MWH`, `HTD`, `TTM`
+- `Services/Projects/PS2603/Ps2603ProjectServices.cs`
+  - PS2603 Talker ID 정책
+  - 문장별 Multicast 주소 지원 정책
+- `Services/Projects/PS2514/Ps2514ProjectServices.cs`
+  - PS2514 Talker ID 정책
+
+## 5. MVVM 구성
+
+### 5.1 View
 
 - `Views/Shell/MainWindow.xaml`
 - `Views/Panels/TopToolbarView.xaml`
@@ -71,7 +105,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `Views/Panels/SentencePanelView.xaml`
 - `Views/Dialogs/PortBaudRateSettingsWindow.xaml`
 
-### 4.2 ViewModel
+### 5.2 ViewModel
 
 - `ViewModels/Shell/MainViewModel.cs` (Shell 조립)
 - `ViewModels/Shell/MainStateStore.cs` (공통 상태 저장소)
@@ -80,7 +114,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `ViewModels/Panels/SentencePanelViewModel.cs`
 - `ViewModels/Dialogs/PortBaudRateSettingsViewModel.cs`
 
-### 4.3 View-ViewModel 매핑 (App.xaml)
+### 5.3 View-ViewModel 매핑 (App.xaml)
 
 `App.xaml` DataTemplate 매핑으로 ViewModel 타입별 View를 자동 연결합니다.
 
@@ -88,7 +122,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `ManualLogViewModel` -> `ManualLogView`
 - `SentencePanelViewModel` -> `SentencePanelView`
 
-## 5. 서비스 레이어 구성
+## 6. 서비스 레이어 구성
 
 - 워크플로우
   - `Services/Workflow/MainWorkflowService.cs`
@@ -108,21 +142,39 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
   - `Services/Network/UdpService.cs`
   - `Services/Network/UdpTransportProfileService.cs`
 
-## 6. 프로젝트별 구현체 위치
+## 7. 프로젝트별 구현체 위치
 
 - `Services/Projects/PS2603/*`
 - `Services/Projects/PS2514/*`
 - `Services/Projects/PS2404A/*`
 
-예: PS2404A 전용 규칙
+### 7.1 PS2404A 전용 규칙
 
-- SEND FLAG 코덱
-- RPM 교대 송신
-- `1$...`, `2$...` 프레임 확장
-- AIS 중복 전송
-- `NMEAMultiCast.ini` 기반 UDP 전송 설정
+- `Ps2404aSendFlagCodec`
+  - PS2404A 기존 MFC SEND FLAG 매핑 반영
+- `Ps2404aSentenceFramePolicy`
+  - PORT/STBD RPM 교대 송신
+  - `$` 문장은 `1$...`, `2$...` 형태로 확장
+  - `!` AIS 문장은 동일 문장 2회 송신
+  - 문장별 Multicast 주소 지원
+- `Ps2404aNmeaSentenceBuilder`
+  - PS2404A NMEADrv 기준 문장 생성 규칙 반영
+  - KOSE 기반 RMC/VTG 처리
+  - PS2404A 전용 좌표 포맷 및 Talker ID override 적용
+- `Ps2404aUdpTransportProfileStore`
+  - `NMEAMultiCast.ini` 로드/저장
+  - Broadcast/Multicast 모드
+  - Multicast `PORT NO`, `SEND PORT`, `SEND ADDRESS`
 
-## 7. 설정 파일
+### 7.2 프로젝트별 주요 차이
+
+| Project | 주요 특징 |
+|---|---|
+| `PS2603` | 기본 NMEA 규칙, `INVBW`, 문장별 Multicast 주소 지원 |
+| `PS2514` | 기본 NMEA 규칙, 기본 Talker 유지 |
+| `PS2404A` | PS2404A NMEADrv 호환, 프레임 확장, RPM 교대 송신, NMEAMultiCast.ini 지원 |
+
+## 8. 설정 파일
 
 기본 파일: `NMEASender.Wpf.ini`
 
@@ -133,11 +185,33 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `[SOCKET]`: 기본 UDP 포트
 - `[SENTENCE PORTS]`: Sentence 행별 COM 포트
 - `[UDP PORTS]`: Sentence 행별 UDP 포트
+- `[UDP ADDRESSES]`: Sentence 행별 UDP Multicast 주소
 - `[BAUD RATE]`: COM 포트별 BaudRate
+
+`[CONFIG]`의 `Project` 값으로 프로젝트별 정책이 선택됩니다.
+
+```ini
+[CONFIG]
+TITLE=ECDIS Sender
+Project=PS2404A
+```
 
 PS2404A는 추가로 `NMEAMultiCast.ini`를 사용합니다.
 
-## 8. 빌드
+```ini
+[BROADCAST]
+USE=1
+PORT NO=49552
+
+[MULTICAST]
+PORT NO=6000
+SEND PORT=6000
+SEND ADDRESS=225.0.0.0
+```
+
+설정창에서 Multicast Address를 수정하면 문장별 Multicast 주소에 일괄 적용할 수 있습니다.
+
+## 9. 빌드
 
 ```bash
 dotnet build
@@ -149,7 +223,7 @@ dotnet build
 dotnet build NMEASender.Wpf.csproj --no-restore -p:OutputPath=bin\\BuildCheck\\ -p:UseAppHost=false
 ```
 
-## 9. 새 프로젝트 타입 추가 가이드
+## 10. 새 프로젝트 타입 추가 가이드
 
 1. `Models/Projects/ProjectModels.cs`에 `ProjectType` 추가
 2. `Services/Projects/<NEW_PROJECT>/` 폴더 생성
