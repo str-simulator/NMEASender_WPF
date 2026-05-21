@@ -5,129 +5,159 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 ## 1. 프로젝트 개요
 
 - 프레임워크: `WPF`, `.NET 8`, `CommunityToolkit.Mvvm`
-- 주요 출력 채널: `Serial(COM)` / `UDP Broadcast`
+- 주요 출력 채널: `Serial(COM)` / `UDP(Broadcast/Multicast)`
 - 목적: 시뮬레이터 연동 데이터 기반 NMEA 생성, 미리보기, 선택 송신
 
-## 2. 최신 업데이트 요약
+## 2. 주요 기능
 
-이번 리팩터링/기능 업데이트에서 반영된 핵심 내용입니다.
+- 문장별 COM/UDP 송신 분리 체크
+- ALL COM / ALL UDP 일괄 체크
+- Sentence 행 복제/삭제(+/-)
+- COM 포트별 BaudRate 설정
+- Sentence(행)별 UDP 포트 설정
+- START 중 COM/UDP 동적 오픈/클로즈
+- 로그 자동 하단 추적 + 사용자 스크롤 해제/복귀
+- 프로젝트 타입별(PS2603 / PS2514 / PS2404A) 송신 규칙 분기
 
-- UI 구조 분리
-  - `MainWindow`를 조립 컨테이너로 단순화
-  - `TopToolbarView`, `ManualLogView`, `SentencePanelView`로 분할
-- View-ViewModel 매핑 구조 도입
-  - View별 ViewModel(`TopToolbarViewModel`, `ManualLogViewModel`, `SentencePanelViewModel`) 적용
-  - `App.xaml`에 DataTemplate 매핑 등록
-- 메인 로직 재구성 (MVVM 강화)
-  - `MainViewModel`은 화면 조립(Shell)만 담당
-  - 공통 상태는 `MainStateStore`로 분리
-  - 실제 업무 로직/통신 제어는 `MainWorkflowService`로 분리
-  - 각 ViewModel은 자신의 View 바인딩 상태/명령만 담당
-- 문장별 송신 제어 고도화
-  - COM/UDP 체크 분리, ALL COM/ALL UDP 체크 분리
-  - Sentence 복제/삭제(+/-) 지원
-- 통신 기능 고도화
-  - START 상태에서 UDP만 선택된 경우도 정상 시작
-  - COM 오픈 실패 시 경고 다이얼로그 표시
-  - 실행 중 COM 체크 활성화 시 해당 COM 포트 즉시 오픈
-  - 전역 `Use UDP` 토글 제거, 문장(행) UDP 체크 상태 기반 자동 UDP 오픈/클로즈
-- 포트/설정 기능 확장
-  - COM 포트별 BaudRate 설정
-  - Sentence(행)별 UDP 포트 설정 및 실제 송신 반영
-  - 상단 UDP 포트 입력 + `APPLY`로 모든 문장 UDP 포트 일괄 적용
-  - INI 저장/복원 확장 (`[UDP PORTS]`, `[BAUD RATE]` 등)
-- 로그 UX 개선
-  - 최신 로그 자동 추적
-  - 사용자 수동 스크롤 시 자동 추적 해제/하단 복귀 시 재개
-  - 커스텀 스크롤바 스타일 적용
-- NMEA 생성 개선
-  - PORT/STBD RPM 분리
-  - ProjectType 기반 Talker/출력 규칙 확장
+## 3. 최신 구조 업데이트
 
-## 3. 아키텍처
+이번 리팩터링은 서비스 레이어뿐 아니라 **전 레이어(Models / ViewModels / Views / Services / Interfaces / Behaviors)** 에 폴더 분리를 적용했습니다.
 
-### View
+### 3.1 폴더 구조
 
-- `MainWindow.xaml` (Shell)
-- `Views/TopToolbarView.xaml`
-- `Views/ManualLogView.xaml`
-- `Views/SentencePanelView.xaml`
+- `Models`
+  - `Core`: NMEA/전송 핵심 모델
+  - `UI`: 화면 바인딩용 모델
+  - `Network`: UDP 관련 모델
+  - `SharedMemory`: 네이티브 공유메모리 구조
+  - `Ais`: AIS payload 빌더
+  - `Projects`: 프로젝트 공통 프로필/열거형
+- `ViewModels`
+  - `Shell`: 앱 조립/공통 상태
+  - `Panels`: 메인 화면 패널 ViewModel
+  - `Dialogs`: 설정 창 ViewModel
+- `Views`
+  - `Shell`: 메인 윈도우
+  - `Panels`: 상단/좌측/우측 패널
+  - `Dialogs`: 설정 창
+- `Services`
+  - `Application`, `Config`, `Workflow`, `Transmission`, `Ports`, `IO`, `Network`
+  - `Projects`: 프로젝트별 구현체(PS2603/PS2514/PS2404A)
+- `Services/Interfaces`
+  - 기능별로 `Application`, `Config`, `Workflow`, `Transmission`, `Ports`, `IO`, `Network`, `Projects` 하위 분리
+- `Behaviors/Core`
+  - 공통 Attached Behavior
 
-### ViewModel
+### 3.2 프로젝트별 분리 방식
 
-- `MainViewModel` (Shell, 화면 조립)
-- `MainStateStore` (공통 UI 상태 저장소)
-- `TopToolbarViewModel`
-- `ManualLogViewModel`
-- `SentencePanelViewModel`
-- `PortBaudRateSettingsViewModel`
+프로젝트 의존 로직은 `Services/Projects/<ProjectType>/`에 모아두고, 상위 서비스는 라우터 역할만 수행합니다.
 
-### Model
+대표 분리 지점:
 
-- `SentenceItem`, `NmeaDataDto`, `NmeaBuildOptions`
-- `NmeaDerivedData`, `NmeaTransmissionModels`
-- `ProjectModels`, `NmeaSentenceId`, `OutputChannelModels`
+- Sentence 빌드: `IProjectNmeaSentenceBuilder`
+- iOS VTG 처리: `IProjectSentenceComposerProfile`
+- 송신 프레이밍/UDP 포트 정책: `IProjectSentenceFramePolicy`
+- Sentence 카탈로그 노출 정책: `IProjectSentenceCatalogPolicy`
+- SEND FLAG 인코딩/디코딩: `IProjectSendFlagCodec`
+- UDP 프로필 저장소: `IProjectUdpTransportProfileStore`
 
-### Service
+## 4. MVVM 구성
 
-- 화면 워크플로우: `MainWorkflowService`
-- Sentence 생성/합성: `NmeaSentenceBuilderService`, `SentenceComposerService`, `SentenceCatalogService`
-- 통신: `NmeaTransmissionService`, `OutputChannelService`, `SerialPortHubService`, `UdpService`
-- 설정/환경: `NmeaSenderConfigService`, `PortBaudRateService`, `BaudRateSettingService`
-- 입력/데이터: `SharedMemoryProviderService`, `ManualInputMapperService`
+### 4.1 View
 
-## 4. View-ViewModel 매핑 (App.xaml)
+- `Views/Shell/MainWindow.xaml`
+- `Views/Panels/TopToolbarView.xaml`
+- `Views/Panels/ManualLogView.xaml`
+- `Views/Panels/SentencePanelView.xaml`
+- `Views/Dialogs/PortBaudRateSettingsWindow.xaml`
 
-`App.xaml` 리소스에 DataTemplate을 등록하여, ViewModel 타입에 맞는 View가 자동 선택됩니다.
+### 4.2 ViewModel
+
+- `ViewModels/Shell/MainViewModel.cs` (Shell 조립)
+- `ViewModels/Shell/MainStateStore.cs` (공통 상태 저장소)
+- `ViewModels/Panels/TopToolbarViewModel.cs`
+- `ViewModels/Panels/ManualLogViewModel.cs`
+- `ViewModels/Panels/SentencePanelViewModel.cs`
+- `ViewModels/Dialogs/PortBaudRateSettingsViewModel.cs`
+
+### 4.3 View-ViewModel 매핑 (App.xaml)
+
+`App.xaml` DataTemplate 매핑으로 ViewModel 타입별 View를 자동 연결합니다.
 
 - `TopToolbarViewModel` -> `TopToolbarView`
 - `ManualLogViewModel` -> `ManualLogView`
 - `SentencePanelViewModel` -> `SentencePanelView`
 
-## 5. 인터페이스 설명 (`Services/Interfaces`)
+## 5. 서비스 레이어 구성
 
-| Interface | 설명 |
-|---|---|
-| `IApplicationLifecycleService` | 앱 종료 요청을 추상화합니다. |
-| `IBaudRateSettingService` | 설정 다이얼로그(baud/문장별 UDP 포트) 표시와 결과 반환을 담당합니다. |
-| `IIniFileService` | INI 읽기/쓰기/병합 공통 기능을 제공합니다. |
-| `IMainWorkflowService` | START/STOP, 설정 적용, 주기 송신 등 화면 워크플로우를 총괄합니다. |
-| `IManualInputMapperService` | 수동 입력값 ↔ `NmeaDataDto` 매핑을 담당합니다. |
-| `INmeaSenderConfigService` | 송신 설정(포트, 플래그, baud, UDP 등) 로드/저장을 담당합니다. |
-| `INmeaSentenceBuilderService` | Sentence ID별 NMEA 원문/체크섬 생성 로직을 담당합니다. |
-| `INmeaTransmissionService` | START/STOP/주기 송신 및 COM/UDP 전송 흐름 처리를 담당합니다. |
-| `IOutputChannelService` | COM/UDP 채널 오픈·클로즈·쓰기 동작을 통합 제공합니다. |
-| `IPortBaudRateService` | 포트별 baudrate 스냅샷/검증/적용/해결 로직을 담당합니다. |
-| `ISentenceCatalogService` | 기본 Sentence 목록 및 행 생성 규칙을 제공합니다. |
-| `ISentenceComposerService` | 데이터 기반 문장 생성 + Preview 텍스트 반영을 담당합니다. |
-| `ISerialPortCatalogService` | 시스템 COM 포트 스캔/정렬/유효 포트 선택을 담당합니다. |
-| `ISerialPortHubService` | `SerialPort` 수명주기/쓰기 처리를 담당합니다. |
-| `ISharedMemoryProviderService` | Shared Memory에서 선박 데이터 읽기를 담당합니다. |
-| `IUdpService` | UDP 오픈/송신/종료를 담당합니다. |
+- 워크플로우
+  - `Services/Workflow/MainWorkflowService.cs`
+- 설정
+  - `Services/Config/NmeaSenderConfigService.cs`
+  - `Services/Config/IniFileService.cs`
+- 전송
+  - `Services/Transmission/NmeaSentenceBuilderService.cs`
+  - `Services/Transmission/SentenceComposerService.cs`
+  - `Services/Transmission/SentenceCatalogService.cs`
+  - `Services/Transmission/NmeaTransmissionService.cs`
+  - `Services/Transmission/ProjectSentenceFrameService.cs`
+- IO/통신
+  - `Services/IO/OutputChannelService.cs`
+  - `Services/IO/SharedMemoryProviderService.cs`
+  - `Services/Ports/*`
+  - `Services/Network/UdpService.cs`
+  - `Services/Network/UdpTransportProfileService.cs`
 
-## 6. 설정 파일
+## 6. 프로젝트별 구현체 위치
+
+- `Services/Projects/PS2603/*`
+- `Services/Projects/PS2514/*`
+- `Services/Projects/PS2404A/*`
+
+예: PS2404A 전용 규칙
+
+- SEND FLAG 코덱
+- RPM 교대 송신
+- `1$...`, `2$...` 프레임 확장
+- AIS 중복 전송
+- `NMEAMultiCast.ini` 기반 UDP 전송 설정
+
+## 7. 설정 파일
 
 기본 파일: `NMEASender.Wpf.ini`
 
 주요 섹션:
 
-- `[CONFIG]`: TITLE, Project (`USE UDP`는 하위 호환용으로 유지)
-- `[GPS CONFIG]`: 기본 시리얼 옵션, SEND FLAG, UDP SEND FLAG
+- `[CONFIG]`: TITLE, Project
+- `[GPS CONFIG]`: 기본 시리얼 옵션, SEND FLAG, UDP SEND FLAG, RIGHT RPM 등
 - `[SOCKET]`: 기본 UDP 포트
 - `[SENTENCE PORTS]`: Sentence 행별 COM 포트
 - `[UDP PORTS]`: Sentence 행별 UDP 포트
 - `[BAUD RATE]`: COM 포트별 BaudRate
 
-현재 UDP 송신 활성 여부는 전역 토글이 아니라, 각 문장의 `UDP 체크` 상태로 결정됩니다.
+PS2404A는 추가로 `NMEAMultiCast.ini`를 사용합니다.
 
-## 7. 빌드
+## 8. 빌드
 
 ```bash
 dotnet build
 ```
 
-실행 중 파일 잠금이 있을 때는 별도 출력 경로로 검증 가능합니다.
+실행 중 파일 잠금이 있을 때:
 
 ```bash
 dotnet build NMEASender.Wpf.csproj --no-restore -p:OutputPath=bin\\BuildCheck\\ -p:UseAppHost=false
 ```
+
+## 9. 새 프로젝트 타입 추가 가이드
+
+1. `Models/Projects/ProjectModels.cs`에 `ProjectType` 추가
+2. `Services/Projects/<NEW_PROJECT>/` 폴더 생성
+3. 아래 인터페이스 구현체 추가
+   - `IProjectNmeaSentenceBuilder`
+   - `IProjectSentenceComposerProfile`
+   - `IProjectSentenceFramePolicy`
+   - `IProjectSentenceCatalogPolicy`
+   - `IProjectSendFlagCodec`
+   - `IProjectUdpTransportProfileStore`
+4. `App.xaml.cs` DI 등록 추가
