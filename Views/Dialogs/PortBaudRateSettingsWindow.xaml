@@ -2,9 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Settings"
-        Width="560"
+        Width="760"
         Height="680"
-        MinWidth="460"
+        MinWidth="640"
         MinHeight="520"
         ResizeMode="CanResize"
         SnapsToDevicePixels="True"
@@ -23,7 +23,7 @@
                        Text="Output Settings" />
             <TextBlock Margin="0,6,0,0"
                        Foreground="#5F6B84"
-                       Text="Configure COM baud rate and UDP port per sentence." />
+                       Text="Configure COM baud rate, UDP transport mode, and sentence UDP endpoints." />
         </StackPanel>
 
         <Border Grid.Row="1"
@@ -42,6 +42,7 @@
                             CornerRadius="6">
                         <Grid>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
@@ -75,6 +76,61 @@
                         </Grid>
                     </Border>
 
+                    <Border Margin="0,0,0,10"
+                            Padding="10"
+                            Background="White"
+                            BorderBrush="#DFE5F0"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Margin="0,0,0,8"
+                                       FontWeight="SemiBold"
+                                       Text="UDP Transport" />
+
+                            <StackPanel Grid.Row="1"
+                                        Margin="0,0,0,8"
+                                        Orientation="Horizontal">
+                                <RadioButton Content="Broadcast"
+                                             GroupName="UdpTransportMode"
+                                             IsChecked="{Binding IsBroadcastMode, Mode=TwoWay}" />
+                                <RadioButton Margin="16,0,0,0"
+                                             Content="Multicast"
+                                             GroupName="UdpTransportMode"
+                                             IsChecked="{Binding IsMulticastMode, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock VerticalAlignment="Center"
+                                           FontWeight="SemiBold"
+                                           Foreground="#5C6A85"
+                                           Text="Multicast Address" />
+                                <TextBox Grid.Column="1"
+                                         Margin="8,0,0,0"
+                                         IsEnabled="{Binding IsMulticastAddressEditable}"
+                                         Text="{Binding MulticastAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+
+                            <TextBlock Grid.Row="3"
+                                       Margin="0,8,0,0"
+                                       Foreground="#6E7A90"
+                                       Text="Multicast address must be an IPv4 address in the range 224.0.0.0 - 239.255.255.255." />
+
+                        </Grid>
+                    </Border>
+
                     <Border Padding="10"
                             Background="White"
                             BorderBrush="#DFE5F0"
@@ -89,16 +145,17 @@
                             <TextBlock Grid.Row="0"
                                        Margin="0,0,0,8"
                                        FontWeight="SemiBold"
-                                       Text="Sentence UDP Port" />
+                                       Text="Sentence UDP Endpoint" />
 
                             <ItemsControl Grid.Row="1" ItemsSource="{Binding SentenceUdpPorts}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="0,0,0,8">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="130" />
-                                                <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="210" />
                                             </Grid.ColumnDefinitions>
 
                                             <TextBlock VerticalAlignment="Center"
@@ -110,9 +167,14 @@
                                                        VerticalAlignment="Center"
                                                        Text="{Binding SentenceLabel}" />
                                             <TextBox Grid.Column="2"
+                                                     Margin="0,0,8,0"
                                                      VerticalAlignment="Center"
                                                      HorizontalContentAlignment="Right"
                                                      Text="{Binding UdpPort, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Grid.Column="3"
+                                                     VerticalAlignment="Center"
+                                                     IsEnabled="{Binding DataContext.IsSentenceMulticastAddressEditable, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                     Text="{Binding UdpAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
