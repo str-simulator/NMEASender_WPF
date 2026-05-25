@@ -2,7 +2,7 @@ using NMEASender.Wpf.Models;
 
 namespace NMEASender.Wpf.Services.Projects.PS2404A;
 
-public sealed class Ps2404aSentenceFramePolicy : BaseProjectSentenceFramePolicy
+public sealed class PS2404ASentenceFramePolicy : BaseProjectSentenceFramePolicy
 {
     private bool _sendStarboardRpm = true;
 

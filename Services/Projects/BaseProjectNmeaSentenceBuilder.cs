@@ -7,7 +7,7 @@ namespace NMEASender.Wpf.Services.Projects;
 public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuilder
 {
     protected static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
-    protected const double CppKnotsDivisor = 0.515;
+    protected const double KnotsDivisor = 0.515;
 
     private static readonly NmeaTalkerProfile FallbackTalkerProfile = new(
         GenericTalkerId: "--",
@@ -266,7 +266,7 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
                 continue;
             }
 
-            double speedOverGround = Math.Sqrt(ship.LongitudinalSpeedMps * ship.LongitudinalSpeedMps + ship.LateralSpeedMps * ship.LateralSpeedMps) / CppKnotsDivisor;
+            double speedOverGround = Math.Sqrt(ship.LongitudinalSpeedMps * ship.LongitudinalSpeedMps + ship.LateralSpeedMps * ship.LateralSpeedMps) / KnotsDivisor;
             sentences.Add(AisPosition("AIVDM", ship.Mmsi, ship.Latitude, ship.Longitude, speedOverGround, ship.CourseOverGround, ship.Heading, data.Time));
             sentences.Add(AisStatic("AIVDM", ship));
         }
@@ -277,7 +277,7 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
     protected static string BuildVdo(NmeaDataDto data)
     {
         double courseOverGround = NormalizeDegrees(data.Heading);
-        double speedOverGround = Math.Sqrt(data.LongitudinalSpeedMps * data.LongitudinalSpeedMps + data.LateralSpeedMps * data.LateralSpeedMps) / CppKnotsDivisor;
+        double speedOverGround = Math.Sqrt(data.LongitudinalSpeedMps * data.LongitudinalSpeedMps + data.LateralSpeedMps * data.LateralSpeedMps) / KnotsDivisor;
         double headingLateral = -data.CurrentDrift * Math.Sin((data.CurrentSet - courseOverGround) * NmeaConstants.ToRadians);
         double trueHeading = NormalizeDegrees(Math.Atan2(headingLateral, data.LongitudinalSpeedMps) * NmeaConstants.ToDegrees + courseOverGround);
         return AisPosition("AIVDO", data.Mmsi, data.OwnLatitude, data.OwnLongitude, speedOverGround, courseOverGround, trueHeading, data.Time);

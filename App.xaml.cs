@@ -28,11 +28,11 @@ public partial class App : Application
 
         services.AddSingleton<IProjectSendFlagCodec>(_ => new DefaultProjectSendFlagCodec(ProjectType.PS2603));
         services.AddSingleton<IProjectSendFlagCodec>(_ => new DefaultProjectSendFlagCodec(ProjectType.PS2514));
-        services.AddSingleton<IProjectSendFlagCodec, Ps2404aSendFlagCodec>();
+        services.AddSingleton<IProjectSendFlagCodec, PS2404ASendFlagCodec>();
 
         services.AddSingleton<IProjectUdpTransportProfileStore>(_ => new DefaultProjectUdpTransportProfileStore(ProjectType.PS2603));
         services.AddSingleton<IProjectUdpTransportProfileStore>(_ => new DefaultProjectUdpTransportProfileStore(ProjectType.PS2514));
-        services.AddSingleton<IProjectUdpTransportProfileStore, Ps2404aUdpTransportProfileStore>();
+        services.AddSingleton<IProjectUdpTransportProfileStore, PS2404AUdpTransportProfileStore>();
         services.AddSingleton<IUdpTransportProfileService, UdpTransportProfileService>();
 
         services.AddSingleton<INmeaSenderConfigService>(sp =>
@@ -44,23 +44,23 @@ public partial class App : Application
         services.AddSingleton<IUdpService, UdpService>();
         services.AddSingleton<IProjectNmeaSentenceBuilder, Ps2603NmeaSentenceBuilder>();
         services.AddSingleton<IProjectNmeaSentenceBuilder, Ps2514NmeaSentenceBuilder>();
-        services.AddSingleton<IProjectNmeaSentenceBuilder, Ps2404aNmeaSentenceBuilder>();
+        services.AddSingleton<IProjectNmeaSentenceBuilder, PS2404ANmeaSentenceBuilder>();
         services.AddSingleton<INmeaSentenceBuilderService, NmeaSentenceBuilderService>();
 
         services.AddSingleton<IProjectSentenceComposerProfile>(_ => new DefaultProjectSentenceComposerProfile(ProjectType.PS2603));
         services.AddSingleton<IProjectSentenceComposerProfile>(_ => new DefaultProjectSentenceComposerProfile(ProjectType.PS2514));
-        services.AddSingleton<IProjectSentenceComposerProfile, Ps2404aSentenceComposerProfile>();
+        services.AddSingleton<IProjectSentenceComposerProfile, PS2404ASentenceComposerProfile>();
         services.AddSingleton<IManualInputMapperService, ManualInputMapperService>();
         services.AddSingleton<IOutputChannelService, OutputChannelService>();
 
         services.AddSingleton<IProjectSentenceFramePolicy, Ps2603SentenceFramePolicy>();
         services.AddSingleton<IProjectSentenceFramePolicy>(_ => new DefaultProjectSentenceFramePolicy(ProjectType.PS2514));
-        services.AddSingleton<IProjectSentenceFramePolicy, Ps2404aSentenceFramePolicy>();
+        services.AddSingleton<IProjectSentenceFramePolicy, PS2404ASentenceFramePolicy>();
         services.AddSingleton<IProjectSentenceFrameService, ProjectSentenceFrameService>();
 
         services.AddSingleton<IProjectSentenceCatalogPolicy>(_ => new DefaultProjectSentenceCatalogPolicy(ProjectType.PS2603));
         services.AddSingleton<IProjectSentenceCatalogPolicy>(_ => new DefaultProjectSentenceCatalogPolicy(ProjectType.PS2514));
-        services.AddSingleton<IProjectSentenceCatalogPolicy, Ps2404aSentenceCatalogPolicy>();
+        services.AddSingleton<IProjectSentenceCatalogPolicy, PS2404ASentenceCatalogPolicy>();
         services.AddSingleton<IPortBaudRateService, PortBaudRateService>();
         services.AddSingleton<INmeaTransmissionService, NmeaTransmissionService>();
         services.AddSingleton<ISharedMemoryProviderService, SharedMemoryProviderService>();

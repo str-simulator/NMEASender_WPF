@@ -3,7 +3,7 @@ using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services.Projects.PS2404A;
 
-public sealed class Ps2404aSentenceComposerProfile : BaseProjectSentenceComposerProfile
+public sealed class PS2404ASentenceComposerProfile : BaseProjectSentenceComposerProfile
 {
     public override ProjectType ProjectType => ProjectType.PS2404A;
 

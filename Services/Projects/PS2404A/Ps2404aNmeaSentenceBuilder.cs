@@ -2,7 +2,7 @@ using NMEASender.Wpf.Models;
 
 namespace NMEASender.Wpf.Services.Projects.PS2404A;
 
-public sealed class Ps2404aNmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
+public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
 {
     private static readonly IReadOnlyDictionary<NmeaSentenceId, string> TalkerOverrides = new Dictionary<NmeaSentenceId, string>
     {

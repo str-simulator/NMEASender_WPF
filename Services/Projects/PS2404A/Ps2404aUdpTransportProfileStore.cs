@@ -4,7 +4,7 @@ using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services.Projects.PS2404A;
 
-public sealed class Ps2404aUdpTransportProfileStore : BaseProjectUdpTransportProfileStore
+public sealed class PS2404AUdpTransportProfileStore : BaseProjectUdpTransportProfileStore
 {
     private const string FileName = "NMEAMultiCast.ini";
     private const string SettingSection = "SETTING";
