@@ -32,7 +32,12 @@
                 BorderBrush="#D8DEE9"
                 BorderThickness="1"
                 CornerRadius="8">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Row="1"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Resources>
+                    <Style BasedOn="{StaticResource LogScrollBarStyle}" TargetType="{x:Type ScrollBar}" />
+                </ScrollViewer.Resources>
                 <StackPanel>
                     <Border Margin="0,0,0,10"
                             Padding="10"
