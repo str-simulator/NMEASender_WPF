@@ -85,24 +85,24 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
 
     private static string BuildPs2404aGga(NmeaDataDto data)
     {
-        var lat = FormatPs2404aLatitude(data.Latitude);
-        var lon = FormatPs2404aLongitude(data.Longitude);
+        (string Value, char Hemisphere) lat = FormatPs2404aLatitude(data.Latitude);
+        (string Value, char Hemisphere) lon = FormatPs2404aLongitude(data.Longitude);
         string body = string.Create(Invariant, $"GPGGA,{TimeOfDay(data.Time, true)},{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},1,05,02.5,,M,,M,,");
         return Full(body);
     }
 
     private static string BuildPs2404aGll(NmeaDataDto data)
     {
-        var lat = FormatPs2404aLatitude(data.Latitude);
-        var lon = FormatPs2404aLongitude(data.Longitude);
+        (string Value, char Hemisphere) lat = FormatPs2404aLatitude(data.Latitude);
+        (string Value, char Hemisphere) lon = FormatPs2404aLongitude(data.Longitude);
         string body = string.Create(Invariant, $"GPGLL,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},{TimeOfDay(data.Time, true)},A,A");
         return Full(body);
     }
 
     private static string BuildPs2404aRmc(NmeaDataDto data, NmeaDerivedData derived)
     {
-        var lat = FormatPs2404aLatitude(data.Latitude);
-        var lon = FormatPs2404aLongitude(data.Longitude);
+        (string Value, char Hemisphere) lat = FormatPs2404aLatitude(data.Latitude);
+        (string Value, char Hemisphere) lon = FormatPs2404aLongitude(data.Longitude);
         bool useKose = data.KoseMode == 4;
         double sog = useKose ? data.KoseSogKnots : derived.SpeedOverGroundKnots;
         double cog = useKose ? NormalizeDegrees(data.KoseCog) : derived.CourseOverGround;
@@ -163,15 +163,15 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
 
     private static string BuildPs2404aDtm(NmeaDataDto data)
     {
-        var lat = FormatPs2404aLatitude(data.Latitude);
-        var lon = FormatPs2404aLongitude(data.Longitude);
+        (string Value, char Hemisphere) lat = FormatPs2404aLatitude(data.Latitude);
+        (string Value, char Hemisphere) lon = FormatPs2404aLongitude(data.Longitude);
         return Full(string.Create(Invariant, $"VDDTM,W84,,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},,W84"));
     }
 
     private static string BuildPs2404aGpdtm(NmeaDataDto data)
     {
-        var lat = FormatPs2404aLatitude(data.DatumOffsetLatitude);
-        var lon = FormatPs2404aLongitude(data.DatumOffsetLongitude);
+        (string Value, char Hemisphere) lat = FormatPs2404aLatitude(data.DatumOffsetLatitude);
+        (string Value, char Hemisphere) lon = FormatPs2404aLongitude(data.DatumOffsetLongitude);
         return Full(string.Create(Invariant, $"GPDTM,W84,,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},0.0,W84"));
     }
 

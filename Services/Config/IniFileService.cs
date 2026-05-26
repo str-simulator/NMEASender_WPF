@@ -9,16 +9,16 @@ public sealed class IniFileService : IIniFileService
 
     public static IniFileService Load(string path)
     {
-        var ini = new IniFileService();
+        IniFileService ini = new();
         if (!File.Exists(path))
         {
             return ini;
         }
 
-        var currentSection = string.Empty;
-        foreach (var rawLine in File.ReadAllLines(path))
+        string currentSection = string.Empty;
+        foreach (string rawLine in File.ReadAllLines(path))
         {
-            var line = rawLine.Trim();
+            string line = rawLine.Trim();
             if (line.Length == 0 || line.StartsWith(';') || line.StartsWith('#'))
             {
                 continue;
@@ -31,14 +31,14 @@ public sealed class IniFileService : IIniFileService
                 continue;
             }
 
-            var equalsIndex = line.IndexOf('=');
+            int equalsIndex = line.IndexOf('=');
             if (equalsIndex <= 0)
             {
                 continue;
             }
 
-            var key = line[..equalsIndex].Trim();
-            var value = line[(equalsIndex + 1)..].Trim();
+            string key = line[..equalsIndex].Trim();
+            string value = line[(equalsIndex + 1)..].Trim();
             ini.Set(currentSection, key, value);
         }
 
@@ -47,25 +47,25 @@ public sealed class IniFileService : IIniFileService
 
     public string Get(string section, string key, string defaultValue)
     {
-        return _sections.TryGetValue(section, out var values) && values.TryGetValue(key, out var value)
+        return _sections.TryGetValue(section, out Dictionary<string, string>? values) && values.TryGetValue(key, out string? value)
             ? value
             : defaultValue;
     }
 
     public int GetInt(string section, string key, int defaultValue)
     {
-        return int.TryParse(Get(section, key, defaultValue.ToString()), out var value) ? value : defaultValue;
+        return int.TryParse(Get(section, key, defaultValue.ToString()), out int value) ? value : defaultValue;
     }
 
     public uint GetUInt(string section, string key, uint defaultValue)
     {
-        return uint.TryParse(Get(section, key, defaultValue.ToString()), out var value) ? value : defaultValue;
+        return uint.TryParse(Get(section, key, defaultValue.ToString()), out uint value) ? value : defaultValue;
     }
 
     public bool GetBool(string section, string key, bool defaultValue)
     {
-        var fallback = defaultValue ? "1" : "0";
-        var value = Get(section, key, fallback);
+        string fallback = defaultValue ? "1" : "0";
+        string value = Get(section, key, fallback);
         return value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -81,11 +81,13 @@ public sealed class IniFileService : IIniFileService
             throw new ArgumentException("Unsupported INI implementation.", nameof(other));
         }
 
-        foreach (var (sectionName, section) in source._sections)
+        foreach (KeyValuePair<string, Dictionary<string, string>> sectionPair in source._sections)
         {
-            foreach (var (key, value) in section)
+            string sectionName = sectionPair.Key;
+            Dictionary<string, string> section = sectionPair.Value;
+            foreach (KeyValuePair<string, string> valuePair in section)
             {
-                Set(sectionName, key, value);
+                Set(sectionName, valuePair.Key, valuePair.Value);
             }
         }
     }
@@ -102,17 +104,19 @@ public sealed class IniFileService : IIniFileService
 
     public void Save(string path)
     {
-        var lines = new List<string>();
-        foreach (var (sectionName, section) in _sections)
+        List<string> lines = new();
+        foreach (KeyValuePair<string, Dictionary<string, string>> sectionPair in _sections)
         {
+            string sectionName = sectionPair.Key;
+            Dictionary<string, string> section = sectionPair.Value;
             if (sectionName.Length > 0)
             {
                 lines.Add($"[{sectionName}]");
             }
 
-            foreach (var (key, value) in section)
+            foreach (KeyValuePair<string, string> valuePair in section)
             {
-                lines.Add($"{key}={value}");
+                lines.Add($"{valuePair.Key}={valuePair.Value}");
             }
 
             lines.Add(string.Empty);
@@ -124,7 +128,7 @@ public sealed class IniFileService : IIniFileService
 
     private Dictionary<string, string> GetSection(string section)
     {
-        if (!_sections.TryGetValue(section, out var values))
+        if (!_sections.TryGetValue(section, out Dictionary<string, string>? values))
         {
             values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             _sections[section] = values;

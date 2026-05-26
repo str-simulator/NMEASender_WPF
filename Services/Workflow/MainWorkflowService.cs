@@ -335,9 +335,9 @@ public sealed class MainWorkflowService : IMainWorkflowService
         }
 
         State.DefaultPort = _serialPortCatalogService.PickAvailablePort(State.Ports, previousDefault, _config.DefaultPort);
-        foreach (var (item, portName) in previousSentencePorts)
+        foreach (KeyValuePair<SentenceItem, string> sentencePort in previousSentencePorts)
         {
-            item.PortName = _serialPortCatalogService.PickAvailablePort(State.Ports, portName, State.DefaultPort);
+            sentencePort.Key.PortName = _serialPortCatalogService.PickAvailablePort(State.Ports, sentencePort.Value, State.DefaultPort);
         }
     }
 

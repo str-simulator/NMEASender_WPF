@@ -96,24 +96,24 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
 
     protected static string BuildGga(NmeaDataDto data)
     {
-        var lat = FormatLatitude(data.Latitude);
-        var lon = FormatLongitude(data.Longitude);
+        (string Value, char Hemisphere) lat = FormatLatitude(data.Latitude);
+        (string Value, char Hemisphere) lon = FormatLongitude(data.Longitude);
         string body = string.Create(Invariant, $"GPGGA,{TimeOfDay(data.Time, true)},{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},1,05,02.5,,M,,M,,");
         return Full(body);
     }
 
     protected static string BuildGll(NmeaDataDto data)
     {
-        var lat = FormatLatitude(data.Latitude);
-        var lon = FormatLongitude(data.Longitude);
+        (string Value, char Hemisphere) lat = FormatLatitude(data.Latitude);
+        (string Value, char Hemisphere) lon = FormatLongitude(data.Longitude);
         string body = string.Create(Invariant, $"GPGLL,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},{TimeOfDay(data.Time, true)},A");
         return Full(body);
     }
 
     protected static string BuildRmc(NmeaDataDto data, NmeaDerivedData derived)
     {
-        var lat = FormatLatitude(data.Latitude);
-        var lon = FormatLongitude(data.Longitude);
+        (string Value, char Hemisphere) lat = FormatLatitude(data.Latitude);
+        (string Value, char Hemisphere) lon = FormatLongitude(data.Longitude);
         string body = string.Create(
             Invariant,
             $"GPRMC,{TimeOfDay(data.Time, true)},A,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},{derived.SpeedOverGroundKnots:00.0},{derived.CourseOverGround:000.0},{data.Time:ddMMyy},,");
@@ -215,7 +215,7 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
 
     protected static string BuildMda(NmeaDataDto data)
     {
-        var (water, air, humidity) = MonthlyWeather(data.Time.Month);
+        (double water, double air, double humidity) = MonthlyWeather(data.Time.Month);
         double windKnots = data.WindSpeedMps * 3600.0 / NmeaConstants.NauticalMileMeters;
         string body = string.Create(
             Invariant,
