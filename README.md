@@ -19,7 +19,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - 설정창 Broadcast/Multicast 모드 선택
 - START 중 COM/UDP 동적 오픈/클로즈
 - 로그 자동 하단 추적 + 사용자 스크롤 해제/복귀
-- 프로젝트 타입별(PS2603 / PS2514 / PS2404A) 송신 규칙 분기
+- 프로젝트 타입별(PS2603 / PS000 / PS2404A) 송신 규칙 분기
 
 ## 3. 최신 업데이트 요약
 
@@ -27,7 +27,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 
 - `BaseProjectNmeaSentenceBuilder`는 공통 문장 생성/체크섬/포맷 유틸만 담당하도록 정리
 - PS2404A 전용 NMEA 문장 생성 로직을 `Ps2404aNmeaSentenceBuilder`로 분리
-- PS2603, PS2514도 각각 프로젝트 폴더 내 빌더 클래스로 분리
+- PS2603, PS000도 각각 프로젝트 폴더 내 빌더 클래스로 분리
 - `NmeaSentenceBuilderService`는 `ProjectType` 기준으로 프로젝트별 빌더를 선택
 - `ProjectSentenceFrameService`는 프로젝트별 송신 프레임 정책을 선택
 - `SentenceCatalogService`는 프로젝트별 노출 가능한 Sentence 목록을 정책으로 필터링
@@ -58,7 +58,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
   - `Dialogs`: 설정 창
 - `Services`
   - `Application`, `Config`, `Workflow`, `Transmission`, `Ports`, `IO`, `Network`
-  - `Projects`: 프로젝트별 구현체(PS2603/PS2514/PS2404A)
+  - `Projects`: 프로젝트별 구현체(PS2603/PS000/PS2404A)
 - `Services/Interfaces`
   - 기능별로 `Application`, `Config`, `Workflow`, `Transmission`, `Ports`, `IO`, `Network`, `Projects` 하위 분리
 - `Behaviors/Core`
@@ -92,8 +92,8 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `Services/Projects/PS2603/Ps2603ProjectServices.cs`
   - PS2603 Talker ID 정책
   - 문장별 Multicast 주소 지원 정책
-- `Services/Projects/PS2514/Ps2514ProjectServices.cs`
-  - PS2514 Talker ID 정책
+- `Services/Projects/PS000/Ps000ProjectServices.cs`
+  - PS000 Talker ID 정책
 
 ## 5. MVVM 구성
 
@@ -145,7 +145,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 ## 7. 프로젝트별 구현체 위치
 
 - `Services/Projects/PS2603/*`
-- `Services/Projects/PS2514/*`
+- `Services/Projects/PS000/*`
 - `Services/Projects/PS2404A/*`
 
 ### 7.1 PS2404A 전용 규칙
@@ -171,9 +171,11 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 
 | Project | 주요 특징 |
 |---|---|
+| `PS000` | 표준/default NMEA 규칙, 기본 Talker 유지 |
 | `PS2603` | 기본 NMEA 규칙, `INVBW`, 문장별 Multicast 주소 지원 |
-| `PS2514` | 기본 NMEA 규칙, 기본 Talker 유지 |
 | `PS2404A` | PS2404A NMEADrv 호환, 프레임 확장, RPM 교대 송신, UDPConfig.ini 지원 |
+
+등록되지 않은 프로젝트 코드 값은 호환을 위해 `PS000`으로 읽습니다. 저장 시에는 `Project=PS000`으로 정리됩니다.
 
 ## 8. 설정 파일
 

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.IO.Ports;
 using NMEASender.Wpf.Models;
 using NMEASender.Wpf.Services.Interfaces;
@@ -35,7 +35,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     public bool UseUdp { get; set; } = true;
     public int UdpPort { get; set; } = 40014;
     public UdpTransportOptions UdpTransportOptions { get; set; } = UdpTransportOptions.CreateDefault(40014);
-    public ProjectType ProjectType { get; set; } = global::NMEASender.Wpf.Models.ProjectType.PS2603;
+    public ProjectType ProjectType { get; set; } = ProjectType.PS000;
     public NmeaSendFlag SendFlag { get; set; } = DefaultSendFlag;
     public NmeaSendFlag UdpSendFlag { get; set; } = DefaultSendFlag;
     public Dictionary<NmeaSentenceId, string> SentencePorts { get; } = new();
@@ -64,8 +64,8 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         _sendFlagCodecs = codecs
             .GroupBy(codec => codec.ProjectType)
             .ToDictionary(group => group.Key, group => group.First());
-        _fallbackSendFlagCodec = _sendFlagCodecs.TryGetValue(ProjectType.PS2603, out IProjectSendFlagCodec? ps2603Codec)
-            ? ps2603Codec
+        _fallbackSendFlagCodec = _sendFlagCodecs.TryGetValue(ProjectType.PS000, out IProjectSendFlagCodec? ps000Codec)
+            ? ps000Codec
             : codecs[0];
     }
 
@@ -103,7 +103,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         string configuredProject = ini.Get(ConfigSection, ProjectKey, missing);
         if (configuredProject == missing)
         {
-            configuredProject = ini.Get(ConfigSection, LegacyProjectKey, nameof(global::NMEASender.Wpf.Models.ProjectType.PS2603));
+            configuredProject = ini.Get(ConfigSection, LegacyProjectKey, nameof(ProjectType.PS000));
         }
 
         bool hasLegacyRpmPort = legacyRpmPort != missing;
@@ -483,16 +483,16 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
 
         if (normalized.Length == 0)
         {
-            return global::NMEASender.Wpf.Models.ProjectType.PS2603;
+            return ProjectType.PS000;
         }
 
         return normalized switch
         {
-            "PS603" or "PS2603" => global::NMEASender.Wpf.Models.ProjectType.PS2603,
-            "PS514" or "PS2514" => global::NMEASender.Wpf.Models.ProjectType.PS2514,
-            "PS404A" or "PS2404A" => global::NMEASender.Wpf.Models.ProjectType.PS2404A,
+            "PS000" => ProjectType.PS000,
+            "PS603" or "PS2603" => ProjectType.PS2603,
+            "PS404A" or "PS2404A" => ProjectType.PS2404A,
             _ when Enum.TryParse(normalized, ignoreCase: true, out ProjectType parsed) => parsed,
-            _ => global::NMEASender.Wpf.Models.ProjectType.PS2603
+            _ => ProjectType.PS000
         };
     }
 
@@ -500,9 +500,9 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     {
         return projectType switch
         {
-            global::NMEASender.Wpf.Models.ProjectType.PS2603 => "PS603",
-            global::NMEASender.Wpf.Models.ProjectType.PS2514 => "PS2514",
-            global::NMEASender.Wpf.Models.ProjectType.PS2404A => "PS2404A",
+            ProjectType.PS000 => "PS000",
+            ProjectType.PS2603 => "PS603",
+            ProjectType.PS2404A => "PS2404A",
             _ => projectType.ToString()
         };
     }

@@ -25,8 +25,8 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
             .GroupBy(builder => builder.ProjectType)
             .ToDictionary(group => group.Key, group => group.First());
 
-        _fallbackBuilder = _projectBuilders.TryGetValue(ProjectType.PS2603, out IProjectNmeaSentenceBuilder? ps2603Builder)
-            ? ps2603Builder
+        _fallbackBuilder = _projectBuilders.TryGetValue(ProjectType.PS000, out IProjectNmeaSentenceBuilder? ps000Builder)
+            ? ps000Builder
             : builderList[0];
     }
 

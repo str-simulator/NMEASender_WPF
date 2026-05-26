@@ -443,6 +443,8 @@ NMEASender.Wpf.ini
 Project=PS2404A
 ```
 
+프로젝트 값이 없거나 알 수 없는 값이면 표준/default 프로젝트인 `PS000`으로 동작한다.
+
 UDP 관련 설정은 메인 INI에 저장하지 않고 아래 파일로 분리한다.
 
 ```text
@@ -539,6 +541,8 @@ NMEA 문장 생성에 필요한 원본 데이터가 들어간다.
 - `<Project>SentenceCatalogPolicy`
 - `<Project>SendFlagCodec`
 - `<Project>UdpTransportProfileStore`
+
+표준 NMEA 그대로 사용하는 기준 프로젝트는 `PS000`이다. 프로젝트별 override가 필요 없는 경우 `PS000` 동작을 기준으로 비교하면 된다.
 
 ## 12. 수정할 때 지켜야 할 기준
 

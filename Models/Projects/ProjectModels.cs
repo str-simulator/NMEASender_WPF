@@ -1,9 +1,9 @@
-namespace NMEASender.Wpf.Models;
+﻿namespace NMEASender.Wpf.Models;
 
 public enum ProjectType
 {
+    PS000, // Standard NMEA project
     PS2603, // Samsung Heavy Industries
-    PS2514, // HD Hyundai Global R&D Center | Project 2514
     PS2404A // HD Hyundai Global R&D Center | Project 2404A
 }
 

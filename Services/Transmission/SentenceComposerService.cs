@@ -29,8 +29,8 @@ public sealed class SentenceComposerService : ISentenceComposerService
             .GroupBy(profile => profile.ProjectType)
             .ToDictionary(group => group.Key, group => group.First());
 
-        _fallbackProfile = _projectProfiles.TryGetValue(ProjectType.PS2603, out IProjectSentenceComposerProfile? ps2603Profile)
-            ? ps2603Profile
+        _fallbackProfile = _projectProfiles.TryGetValue(ProjectType.PS000, out IProjectSentenceComposerProfile? ps000Profile)
+            ? ps000Profile
             : profiles[0];
     }
 

@@ -25,8 +25,8 @@ public sealed class UdpTransportProfileService : IUdpTransportProfileService
             .GroupBy(store => store.ProjectType)
             .ToDictionary(group => group.Key, group => group.First());
 
-        _fallbackStore = _projectStores.TryGetValue(ProjectType.PS2603, out IProjectUdpTransportProfileStore? ps2603Store)
-            ? ps2603Store
+        _fallbackStore = _projectStores.TryGetValue(ProjectType.PS000, out IProjectUdpTransportProfileStore? ps000Store)
+            ? ps000Store
             : stores[0];
     }
 

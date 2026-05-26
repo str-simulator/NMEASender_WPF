@@ -25,8 +25,8 @@ public sealed class ProjectSentenceFrameService : IProjectSentenceFrameService
             .GroupBy(policy => policy.ProjectType)
             .ToDictionary(group => group.Key, group => group.First());
 
-        _fallbackPolicy = _projectPolicies.TryGetValue(ProjectType.PS2603, out IProjectSentenceFramePolicy? ps2603Policy)
-            ? ps2603Policy
+        _fallbackPolicy = _projectPolicies.TryGetValue(ProjectType.PS000, out IProjectSentenceFramePolicy? ps000Policy)
+            ? ps000Policy
             : policies[0];
     }
 

@@ -71,8 +71,8 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
         _projectPolicies = policies
             .GroupBy(policy => policy.ProjectType)
             .ToDictionary(group => group.Key, group => group.First());
-        _fallbackPolicy = _projectPolicies.TryGetValue(ProjectType.PS2603, out IProjectSentenceCatalogPolicy? ps2603Policy)
-            ? ps2603Policy
+        _fallbackPolicy = _projectPolicies.TryGetValue(ProjectType.PS000, out IProjectSentenceCatalogPolicy? ps000Policy)
+            ? ps000Policy
             : policies[0];
     }
 
