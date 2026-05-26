@@ -433,10 +433,7 @@ NMEASender.Wpf.ini
 
 - `[CONFIG]`
 - `[GPS CONFIG]`
-- `[SOCKET]`
 - `[SENTENCE PORTS]`
-- `[UDP PORTS]`
-- `[UDP ADDRESSES]`
 - `[BAUD RATE]`
 
 프로젝트 타입은 `[CONFIG]`의 `Project` 값으로 결정된다.
@@ -446,11 +443,19 @@ NMEASender.Wpf.ini
 Project=PS2404A
 ```
 
-PS2404A는 추가로 아래 파일을 사용한다.
+UDP 관련 설정은 메인 INI에 저장하지 않고 아래 파일로 분리한다.
 
 ```text
-NMEAMultiCast.ini
+UDPConfig.ini
 ```
+
+`UDPConfig.ini` 주요 섹션:
+
+- `[UDP CONFIG]`
+- `[UDP PORTS]`
+- `[UDP ADDRESSES]`
+- `[BROADCAST]`
+- `[MULTICAST]`
 
 관련 클래스:
 

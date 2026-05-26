@@ -74,6 +74,11 @@ public sealed class IniFileService : IIniFileService
         GetSection(section)[key] = value;
     }
 
+    public void RemoveSection(string section)
+    {
+        _sections.Remove(section);
+    }
+
     public void MergeFrom(IIniFileService other)
     {
         if (other is not IniFileService source)

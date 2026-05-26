@@ -31,7 +31,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `NmeaSentenceBuilderService`는 `ProjectType` 기준으로 프로젝트별 빌더를 선택
 - `ProjectSentenceFrameService`는 프로젝트별 송신 프레임 정책을 선택
 - `SentenceCatalogService`는 프로젝트별 노출 가능한 Sentence 목록을 정책으로 필터링
-- `NMEAMultiCast.ini` 기반 Broadcast/Multicast 설정 지원
+- `UDPConfig.ini` 기반 UDP 설정 분리
 - 문장별 UDP Port/Multicast Address 저장 및 송신 반영
 - 전역 `Use UDP` 체크박스 제거, 각 Sentence 행의 UDP 체크 상태로 송신 여부 결정
 
@@ -162,7 +162,8 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
   - KOSE 기반 RMC/VTG 처리
   - PS2404A 전용 좌표 포맷 및 Talker ID override 적용
 - `Ps2404aUdpTransportProfileStore`
-  - `NMEAMultiCast.ini` 로드/저장
+  - `UDPConfig.ini` 로드/저장
+  - 기존 `NMEAMultiCast.ini`가 있고 `UDPConfig.ini`가 없으면 1회 호환 로드
   - Broadcast/Multicast 모드
   - Multicast `PORT NO`, `SEND PORT`, `SEND ADDRESS`
 
@@ -172,7 +173,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 |---|---|
 | `PS2603` | 기본 NMEA 규칙, `INVBW`, 문장별 Multicast 주소 지원 |
 | `PS2514` | 기본 NMEA 규칙, 기본 Talker 유지 |
-| `PS2404A` | PS2404A NMEADrv 호환, 프레임 확장, RPM 교대 송신, NMEAMultiCast.ini 지원 |
+| `PS2404A` | PS2404A NMEADrv 호환, 프레임 확장, RPM 교대 송신, UDPConfig.ini 지원 |
 
 ## 8. 설정 파일
 
@@ -181,11 +182,8 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 주요 섹션:
 
 - `[CONFIG]`: TITLE, Project
-- `[GPS CONFIG]`: 기본 시리얼 옵션, SEND FLAG, UDP SEND FLAG, RIGHT RPM 등
-- `[SOCKET]`: 기본 UDP 포트
+- `[GPS CONFIG]`: 기본 시리얼 옵션, SEND FLAG, RIGHT RPM 등
 - `[SENTENCE PORTS]`: Sentence 행별 COM 포트
-- `[UDP PORTS]`: Sentence 행별 UDP 포트
-- `[UDP ADDRESSES]`: Sentence 행별 UDP Multicast 주소
 - `[BAUD RATE]`: COM 포트별 BaudRate
 
 `[CONFIG]`의 `Project` 값으로 프로젝트별 정책이 선택됩니다.
@@ -196,9 +194,22 @@ TITLE=ECDIS Sender
 Project=PS2404A
 ```
 
-PS2404A는 추가로 `NMEAMultiCast.ini`를 사용합니다.
+UDP 관련 설정은 `NMEASender.Wpf.ini`에 저장하지 않고 `UDPConfig.ini`에 분리해서 저장합니다.
 
 ```ini
+[UDP CONFIG]
+USE UDP=1
+SEND PORT=40014
+UDP SEND FLAG=16777215
+
+[UDP PORTS]
+GGA=40014
+RMC=40014
+
+[UDP ADDRESSES]
+GGA=225.0.0.0
+RMC=225.0.0.0
+
 [BROADCAST]
 USE=1
 PORT NO=49552
