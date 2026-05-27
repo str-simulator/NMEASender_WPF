@@ -1,9 +1,14 @@
-﻿using System.IO;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.Config;
+using NMEASender.Wpf.Services.Interfaces.Network;
+using NMEASender.Wpf.Services.Interfaces.Projects;
+using System.IO;
 using System.IO.Ports;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Config;
 
 public sealed class NmeaSenderConfigService : INmeaSenderConfigService
 {

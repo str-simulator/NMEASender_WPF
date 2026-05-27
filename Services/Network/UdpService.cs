@@ -1,10 +1,10 @@
+﻿using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Services.Interfaces.Network;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Network;
 
 public sealed class UdpService : IUdpService
 {

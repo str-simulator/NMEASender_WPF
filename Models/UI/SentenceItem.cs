@@ -1,8 +1,9 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using NMEASender.Wpf.Models.Core;
 using System.Net;
 using System.Net.Sockets;
 
-namespace NMEASender.Wpf.Models;
+namespace NMEASender.Wpf.Models.UI;
 
 public sealed partial class SentenceItem : ObservableObject
 {

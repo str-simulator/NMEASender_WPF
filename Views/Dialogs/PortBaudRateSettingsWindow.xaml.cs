@@ -1,7 +1,7 @@
-﻿using System.Windows;
-using NMEASender.Wpf.ViewModels;
+﻿using NMEASender.Wpf.ViewModels.Dialogs;
+using System.Windows;
 
-namespace NMEASender.Wpf;
+namespace NMEASender.Wpf.Views.Dialogs;
 
 public partial class PortBaudRateSettingsWindow : Window
 {

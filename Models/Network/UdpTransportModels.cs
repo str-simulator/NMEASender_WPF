@@ -1,6 +1,6 @@
-using System.Net;
+﻿using System.Net;
 
-namespace NMEASender.Wpf.Models;
+namespace NMEASender.Wpf.Models.Network;
 
 public enum UdpTransportMode
 {

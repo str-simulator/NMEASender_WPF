@@ -1,7 +1,7 @@
+﻿using NMEASender.Wpf.ViewModels.Shell;
 using System.Windows;
-using NMEASender.Wpf.ViewModels;
 
-namespace NMEASender.Wpf;
+namespace NMEASender.Wpf.Views.Shell;
 
 public partial class MainWindow : Window
 {

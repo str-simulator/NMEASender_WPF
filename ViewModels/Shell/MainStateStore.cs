@@ -1,8 +1,8 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using NMEASender.Wpf.Models.UI;
 using System.Collections.ObjectModel;
-using NMEASender.Wpf.Models;
 
-namespace NMEASender.Wpf.ViewModels;
+namespace NMEASender.Wpf.ViewModels.Shell;
 
 public sealed partial class MainStateStore : ObservableObject
 {

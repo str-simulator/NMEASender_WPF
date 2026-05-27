@@ -1,8 +1,11 @@
-﻿using NMEASender.Wpf.Models;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Services.Interfaces.IO;
+using NMEASender.Wpf.Services.Interfaces.Network;
+using NMEASender.Wpf.Services.Interfaces.Ports;
 using System.IO.Ports;
-using NMEASender.Wpf.Services.Interfaces;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.IO;
 
 public sealed class OutputChannelService : IOutputChannelService
 {

@@ -1,15 +1,29 @@
-﻿using System.Windows;
-using Microsoft.Extensions.DependencyInjection;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services;
+﻿using Microsoft.Extensions.DependencyInjection;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Services.Application;
+using NMEASender.Wpf.Services.Config;
+using NMEASender.Wpf.Services.Interfaces.Application;
+using NMEASender.Wpf.Services.Interfaces.Config;
+using NMEASender.Wpf.Services.Interfaces.IO;
+using NMEASender.Wpf.Services.Interfaces.Mapping;
+using NMEASender.Wpf.Services.Interfaces.Network;
+using NMEASender.Wpf.Services.Interfaces.Ports;
+using NMEASender.Wpf.Services.Interfaces.Projects;
+using NMEASender.Wpf.Services.Interfaces.Transmission;
+using NMEASender.Wpf.Services.Interfaces.Workflow;
+using NMEASender.Wpf.Services.IO;
+using NMEASender.Wpf.Services.Mapping;
 using NMEASender.Wpf.Services.Network;
-using NMEASender.Wpf.Services.Interfaces;
+using NMEASender.Wpf.Services.Ports;
 using NMEASender.Wpf.Services.Projects;
 using NMEASender.Wpf.Services.Projects.PS000;
-using NMEASender.Wpf.Services.Projects.PS2603;
 using NMEASender.Wpf.Services.Projects.PS2404A;
-using NMEASender.Wpf.ViewModels;
+using NMEASender.Wpf.Services.Projects.PS2603;
 using NMEASender.Wpf.Services.Transmission;
+using NMEASender.Wpf.Services.Workflow;
+using NMEASender.Wpf.ViewModels.Shell;
+using NMEASender.Wpf.Views.Shell;
+using System.Windows;
 
 namespace NMEASender.Wpf;
 

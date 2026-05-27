@@ -1,7 +1,7 @@
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.ViewModels;
+﻿using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.ViewModels.Shell;
 
-namespace NMEASender.Wpf.Services.Interfaces;
+namespace NMEASender.Wpf.Services.Interfaces.Workflow;
 
 public interface IMainWorkflowService : IDisposable
 {

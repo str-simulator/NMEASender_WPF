@@ -1,9 +1,11 @@
+﻿using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.Ports;
+using NMEASender.Wpf.ViewModels.Dialogs;
+using NMEASender.Wpf.Views.Dialogs;
 using System.Windows;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
-using NMEASender.Wpf.ViewModels;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Ports;
 
 public sealed class BaudRateSettingService : IBaudRateSettingService
 {
@@ -26,7 +28,7 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
             supportsPerSentenceMulticastAddress);
         PortBaudRateSettingsWindow window = new(viewModel);
 
-        if (Application.Current.MainWindow is Window owner && owner.IsVisible)
+        if (System.Windows.Application.Current.MainWindow is Window owner && owner.IsVisible)
         {
             window.Owner = owner;
         }

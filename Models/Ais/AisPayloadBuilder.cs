@@ -1,4 +1,6 @@
-namespace NMEASender.Wpf.Models;
+﻿using NMEASender.Wpf.Models.Core;
+
+namespace NMEASender.Wpf.Models.Ais;
 
 public static class AisPayloadBuilder
 {

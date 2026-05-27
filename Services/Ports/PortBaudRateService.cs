@@ -1,6 +1,7 @@
-﻿using NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Services.Interfaces.Config;
+using NMEASender.Wpf.Services.Interfaces.Ports;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Ports;
 
 public sealed class PortBaudRateService : IPortBaudRateService
 {

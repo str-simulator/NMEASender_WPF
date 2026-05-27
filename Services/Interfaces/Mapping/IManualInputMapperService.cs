@@ -1,6 +1,7 @@
-using NMEASender.Wpf.Models;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Services.Mapping;
 
-namespace NMEASender.Wpf.Services.Interfaces;
+namespace NMEASender.Wpf.Services.Interfaces.Mapping;
 
 public interface IManualInputMapperService
 {

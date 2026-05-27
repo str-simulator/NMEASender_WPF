@@ -1,4 +1,4 @@
-namespace NMEASender.Wpf.Models;
+﻿namespace NMEASender.Wpf.Models.Core;
 
 [Flags]
 public enum NmeaSendFlag : ulong

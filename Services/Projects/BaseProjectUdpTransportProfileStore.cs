@@ -1,6 +1,9 @@
+﻿using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Services.Config;
+using NMEASender.Wpf.Services.Interfaces.Config;
+using NMEASender.Wpf.Services.Interfaces.Projects;
 using System.IO;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
 
 namespace NMEASender.Wpf.Services.Projects;
 

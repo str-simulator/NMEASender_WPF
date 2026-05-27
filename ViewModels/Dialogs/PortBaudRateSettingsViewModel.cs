@@ -1,11 +1,12 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.UI;
 using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Sockets;
-using NMEASender.Wpf.Models;
 
-namespace NMEASender.Wpf.ViewModels;
+namespace NMEASender.Wpf.ViewModels.Dialogs;
 
 public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
 {

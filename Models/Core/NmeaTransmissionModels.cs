@@ -1,6 +1,8 @@
-using NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.Config;
 
-namespace NMEASender.Wpf.Models;
+namespace NMEASender.Wpf.Models.Core;
 
 public sealed record TransmissionStartContext(
     INmeaSenderConfigService Config,

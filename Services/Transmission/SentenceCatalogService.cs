@@ -1,7 +1,11 @@
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.Config;
+using NMEASender.Wpf.Services.Interfaces.Projects;
+using NMEASender.Wpf.Services.Interfaces.Transmission;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Transmission;
 
 public sealed class SentenceCatalogService : ISentenceCatalogService
 {

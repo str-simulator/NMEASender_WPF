@@ -2,7 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace NMEASender.Wpf.Behaviors;
+namespace NMEASender.Wpf.Behaviors.Core;
 
 public static class ComboBoxDropDownCommandBehavior
 {

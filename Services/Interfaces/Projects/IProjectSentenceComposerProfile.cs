@@ -1,6 +1,8 @@
-using NMEASender.Wpf.Models;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Services.Interfaces.Transmission;
 
-namespace NMEASender.Wpf.Services.Interfaces;
+namespace NMEASender.Wpf.Services.Interfaces.Projects;
 
 public interface IProjectSentenceComposerProfile
 {

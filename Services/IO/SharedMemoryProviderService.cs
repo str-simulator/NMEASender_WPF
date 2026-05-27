@@ -1,11 +1,12 @@
-﻿using System.IO;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.SharedMemory;
+using NMEASender.Wpf.Services.Interfaces.IO;
+using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Text;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.IO;
 
 public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
 {

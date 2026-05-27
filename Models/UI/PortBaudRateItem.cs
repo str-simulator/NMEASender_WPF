@@ -1,6 +1,6 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace NMEASender.Wpf.Models;
+namespace NMEASender.Wpf.Models.UI;
 
 public sealed partial class PortBaudRateItem : ObservableObject
 {
