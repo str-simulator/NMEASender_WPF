@@ -1,15 +1,25 @@
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.Application;
+using NMEASender.Wpf.Services.Interfaces.Config;
+using NMEASender.Wpf.Services.Interfaces.IO;
+using NMEASender.Wpf.Services.Interfaces.Mapping;
+using NMEASender.Wpf.Services.Interfaces.Ports;
+using NMEASender.Wpf.Services.Interfaces.Transmission;
+using NMEASender.Wpf.Services.Interfaces.Workflow;
+using NMEASender.Wpf.Services.Mapping;
+using NMEASender.Wpf.ViewModels.Shell;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
-using System.Net;
 using System.Net.Sockets;
-using System.Windows;
+using System.Net;
 using System.Windows.Threading;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
-using NMEASender.Wpf.ViewModels;
+using System.Windows;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Workflow;
 
 public sealed class MainWorkflowService : IMainWorkflowService
 {

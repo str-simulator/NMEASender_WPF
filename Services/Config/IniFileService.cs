@@ -1,7 +1,7 @@
+﻿using NMEASender.Wpf.Services.Interfaces.Config;
 using System.IO;
-using NMEASender.Wpf.Services.Interfaces;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Config;
 
 public sealed class IniFileService : IIniFileService
 {

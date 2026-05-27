@@ -1,6 +1,7 @@
-using NMEASender.Wpf.Models;
+﻿using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.Config;
 
-namespace NMEASender.Wpf.Services.Interfaces;
+namespace NMEASender.Wpf.Services.Interfaces.Transmission;
 
 public interface ISentenceCatalogService
 {

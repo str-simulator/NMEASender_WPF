@@ -1,6 +1,6 @@
-using System.IO.Ports;
+﻿using System.IO.Ports;
 
-namespace NMEASender.Wpf.Services.Interfaces;
+namespace NMEASender.Wpf.Services.Interfaces.Ports;
 
 public interface ISerialPortHubService : IDisposable
 {

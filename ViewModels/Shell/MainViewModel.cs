@@ -1,6 +1,7 @@
-using NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Services.Interfaces.Workflow;
+using NMEASender.Wpf.ViewModels.Panels;
 
-namespace NMEASender.Wpf.ViewModels;
+namespace NMEASender.Wpf.ViewModels.Shell;
 
 public sealed class MainViewModel : IDisposable
 {

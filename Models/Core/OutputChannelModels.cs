@@ -1,6 +1,7 @@
-﻿using System.IO.Ports;
+﻿using NMEASender.Wpf.Models.Network;
+using System.IO.Ports;
 
-namespace NMEASender.Wpf.Models;
+namespace NMEASender.Wpf.Models.Core;
 
 public sealed record OutputOpenRequest(
     IReadOnlyList<string> EnabledPorts,

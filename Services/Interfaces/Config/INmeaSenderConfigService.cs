@@ -1,7 +1,10 @@
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Models.UI;
 using System.IO.Ports;
-using NMEASender.Wpf.Models;
 
-namespace NMEASender.Wpf.Services.Interfaces;
+namespace NMEASender.Wpf.Services.Interfaces.Config;
 
 public interface INmeaSenderConfigService
 {

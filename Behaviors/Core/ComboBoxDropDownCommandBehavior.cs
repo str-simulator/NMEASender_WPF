@@ -1,8 +1,8 @@
-﻿using System.Windows;
-using System.Windows.Controls;
+﻿using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows;
 
-namespace NMEASender.Wpf.Behaviors;
+namespace NMEASender.Wpf.Behaviors.Core;
 
 public static class ComboBoxDropDownCommandBehavior
 {

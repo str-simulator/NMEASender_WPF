@@ -1,8 +1,13 @@
-﻿using System.Diagnostics;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.IO;
+using NMEASender.Wpf.Services.Interfaces.Ports;
+using NMEASender.Wpf.Services.Interfaces.Transmission;
+using System.Diagnostics;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Transmission;
 
 public sealed class NmeaTransmissionService : INmeaTransmissionService
 {

@@ -1,5 +1,5 @@
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Services.Interfaces.Projects;
 
 namespace NMEASender.Wpf.Services.Projects;
 

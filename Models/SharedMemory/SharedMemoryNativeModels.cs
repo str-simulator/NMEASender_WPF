@@ -1,6 +1,6 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
-namespace NMEASender.Wpf.Models;
+namespace NMEASender.Wpf.Models.SharedMemory;
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
 internal struct PointStruct

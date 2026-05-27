@@ -1,6 +1,6 @@
-using System.Windows.Controls;
+﻿using System.Windows.Controls;
 
-namespace NMEASender.Wpf.Views;
+namespace NMEASender.Wpf.Views.Panels;
 
 public partial class SentencePanelView : UserControl
 {

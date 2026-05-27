@@ -1,12 +1,12 @@
-﻿using NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Services.Interfaces.Application;
 using System.Windows;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Application;
 
 public sealed class ApplicationLifecycleService : IApplicationLifecycleService
 {
     public void RequestShutdown()
     {
-        Application.Current.Shutdown();
+        System.Windows.Application.Current.Shutdown();
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Services.Interfaces.Config;
+
+namespace NMEASender.Wpf.Services.Interfaces.Ports;
 
 public interface IPortBaudRateService
 {

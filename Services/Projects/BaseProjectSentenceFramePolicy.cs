@@ -1,7 +1,10 @@
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
-using System.Net;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.Projects;
 using System.Net.Sockets;
+using System.Net;
 
 namespace NMEASender.Wpf.Services.Projects;
 

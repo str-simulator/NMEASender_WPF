@@ -1,8 +1,8 @@
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Services.Interfaces.Mapping;
 using System.Globalization;
-using NMEASender.Wpf.Models;
-using NMEASender.Wpf.Services.Interfaces;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Mapping;
 
 public readonly record struct ManualInputValues(string Longitude, string Latitude, string Speed, string Heading);
 

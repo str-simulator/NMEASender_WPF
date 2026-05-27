@@ -1,8 +1,8 @@
-﻿using NMEASender.Wpf.Models;
-
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Network;
 using System.IO.Ports;
 
-namespace NMEASender.Wpf.Services.Interfaces;
+namespace NMEASender.Wpf.Services.Interfaces.IO;
 
 public interface IOutputChannelService : IDisposable
 {

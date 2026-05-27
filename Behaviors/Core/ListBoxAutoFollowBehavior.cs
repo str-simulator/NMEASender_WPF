@@ -1,12 +1,12 @@
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Windows;
 
-namespace NMEASender.Wpf.Behaviors;
+namespace NMEASender.Wpf.Behaviors.Core;
 
 public static class ListBoxAutoFollowBehavior
 {

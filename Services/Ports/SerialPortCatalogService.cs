@@ -1,7 +1,7 @@
-using NMEASender.Wpf.Services.Interfaces;
+﻿using NMEASender.Wpf.Services.Interfaces.Ports;
 using System.IO.Ports;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Ports;
 
 public sealed class SerialPortCatalogService : ISerialPortCatalogService
 {

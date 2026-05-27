@@ -1,10 +1,11 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NMEASender.Wpf.Services.Interfaces.Workflow;
+using NMEASender.Wpf.ViewModels.Shell;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using NMEASender.Wpf.Services.Interfaces;
 
-namespace NMEASender.Wpf.ViewModels;
+namespace NMEASender.Wpf.ViewModels.Panels;
 
 public sealed class ManualLogViewModel : ObservableObject, IDisposable
 {

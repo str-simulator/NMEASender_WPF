@@ -1,4 +1,4 @@
-namespace NMEASender.Wpf.Services.Interfaces;
+﻿namespace NMEASender.Wpf.Services.Interfaces.Config;
 
 public interface IIniFileService
 {

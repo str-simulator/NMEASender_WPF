@@ -1,6 +1,6 @@
-using NMEASender.Wpf.Models;
+﻿using NMEASender.Wpf.Models.Network;
 
-namespace NMEASender.Wpf.Services.Interfaces;
+namespace NMEASender.Wpf.Services.Interfaces.Network;
 
 public interface IUdpService : IDisposable
 {

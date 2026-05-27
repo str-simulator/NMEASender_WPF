@@ -1,4 +1,7 @@
-using NMEASender.Wpf.Models;
+﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Projects;
 
 namespace NMEASender.Wpf.Services.Projects.PS2404A;
 

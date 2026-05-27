@@ -1,8 +1,8 @@
+﻿using NMEASender.Wpf.Services.Interfaces.Ports;
 using System.IO.Ports;
 using System.Text;
-using NMEASender.Wpf.Services.Interfaces;
 
-namespace NMEASender.Wpf.Services;
+namespace NMEASender.Wpf.Services.Ports;
 
 public sealed class SerialPortHubService : ISerialPortHubService
 {

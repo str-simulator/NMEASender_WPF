@@ -1,4 +1,4 @@
-namespace NMEASender.Wpf.Models;
+﻿namespace NMEASender.Wpf.Models.Core;
 
 public sealed class NmeaDataDto
 {
