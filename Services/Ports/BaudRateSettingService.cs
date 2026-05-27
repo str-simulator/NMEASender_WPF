@@ -3,7 +3,6 @@ using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Ports;
 using NMEASender.Wpf.ViewModels.Dialogs;
 using NMEASender.Wpf.Views.Dialogs;
-using NMEASender.Wpf.Views.Shell;
 using System.Windows;
 
 namespace NMEASender.Wpf.Services.Ports;

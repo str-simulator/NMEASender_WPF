@@ -1,6 +1,5 @@
 ﻿using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Network;
-using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Application;
 using NMEASender.Wpf.Services.Interfaces.Config;
@@ -14,10 +13,10 @@ using NMEASender.Wpf.ViewModels.Shell;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
-using System.Net.Sockets;
 using System.Net;
-using System.Windows.Threading;
+using System.Net.Sockets;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace NMEASender.Wpf.Services.Workflow;
 

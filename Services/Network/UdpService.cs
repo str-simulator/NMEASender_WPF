@@ -1,7 +1,7 @@
 ﻿using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Services.Interfaces.Network;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 namespace NMEASender.Wpf.Services.Network;

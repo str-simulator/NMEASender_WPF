@@ -5,8 +5,8 @@ using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Config;
 using NMEASender.Wpf.Services.Interfaces.Network;
 using NMEASender.Wpf.Services.Interfaces.Projects;
-using System.IO.Ports;
 using System.IO;
+using System.IO.Ports;
 
 namespace NMEASender.Wpf.Services.Config;
 

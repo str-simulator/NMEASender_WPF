@@ -1,5 +1,4 @@
 ﻿using NMEASender.Wpf.Services.Interfaces.Application;
-using System.Windows;
 
 namespace NMEASender.Wpf.Services.Application;
 

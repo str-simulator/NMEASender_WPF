@@ -3,8 +3,8 @@ using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Projects;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 
 namespace NMEASender.Wpf.Services.Projects;
 

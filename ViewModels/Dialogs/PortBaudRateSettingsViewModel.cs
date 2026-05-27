@@ -3,8 +3,8 @@ using CommunityToolkit.Mvvm.Input;
 using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Models.UI;
 using System.Collections.ObjectModel;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 
 namespace NMEASender.Wpf.ViewModels.Dialogs;
 

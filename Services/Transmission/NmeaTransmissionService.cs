@@ -1,6 +1,5 @@
 ﻿using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Network;
-using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.IO;
 using NMEASender.Wpf.Services.Interfaces.Ports;

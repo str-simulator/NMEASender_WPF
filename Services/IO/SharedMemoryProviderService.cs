@@ -1,8 +1,8 @@
 ﻿using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.SharedMemory;
 using NMEASender.Wpf.Services.Interfaces.IO;
-using System.IO.MemoryMappedFiles;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Text;
 

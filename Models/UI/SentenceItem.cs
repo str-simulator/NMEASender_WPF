@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using NMEASender.Wpf.Models.Core;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 
 namespace NMEASender.Wpf.Models.UI;
 

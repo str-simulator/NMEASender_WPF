@@ -1,5 +1,4 @@
 ﻿using NMEASender.Wpf.Models.Projects;
-using NMEASender.Wpf.Services.Projects;
 
 namespace NMEASender.Wpf.Services.Projects.PS2404A;
 
