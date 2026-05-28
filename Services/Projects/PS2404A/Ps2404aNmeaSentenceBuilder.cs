@@ -1,5 +1,5 @@
-﻿using NMEASender.Wpf.Models.Core;
-using NMEASender.Wpf.Models.Ais;
+﻿using NMEASender.Wpf.Models.Ais;
+using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Models.Projects.PS2404A;
 
