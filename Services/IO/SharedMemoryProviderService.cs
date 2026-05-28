@@ -208,16 +208,15 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
         ResetTrafficShipHandles();
     }
 
-    private List<TrafficShipData> ReadTrafficShips(ushort count, double currentSet, double currentDrift)
+    private List<TrafficShipData> ReadTrafficShips(ushort tshipCnt, double currentSet, double currentDrift)
     {
         // Match legacy behavior: reopen traffic ship shared memory every read cycle.
         // Some producers recreate these mappings frequently, which can stale cached handles.
         ResetTrafficShipHandles();
 
         List<TrafficShipData> ships = new List<TrafficShipData>();
-        int safeCount = count == 0 ? 500 : Math.Min((int)count, 500);
 
-        for (int index = 0; index < safeCount; index++)
+        for (int index = 0; index < tshipCnt; index++)
         {
             if (!EnsureTrafficShipOpen(index, out TrafficShipMemory memory))
             {
