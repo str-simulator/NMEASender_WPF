@@ -18,6 +18,7 @@ using NMEASender.Wpf.Services.Ports;
 using NMEASender.Wpf.Services.Projects;
 using NMEASender.Wpf.Services.Projects.PS000;
 using NMEASender.Wpf.Services.Projects.PS2404A;
+using NMEASender.Wpf.Services.Projects.PS2404A.IO;
 using NMEASender.Wpf.Services.Projects.PS2603;
 using NMEASender.Wpf.Services.Transmission;
 using NMEASender.Wpf.Services.Workflow;
@@ -75,6 +76,7 @@ public partial class App : Application
         services.AddSingleton<IProjectSentenceCatalogPolicy>(_ => new DefaultProjectSentenceCatalogPolicy(ProjectType.PS2603));
         services.AddSingleton<IProjectSentenceCatalogPolicy>(_ => new DefaultProjectSentenceCatalogPolicy(ProjectType.PS000));
         services.AddSingleton<IProjectSentenceCatalogPolicy, PS2404ASentenceCatalogPolicy>();
+        services.AddSingleton<IProjectSharedMemoryExtensionReader, PS2404ASharedMemoryExtensionReader>();
         services.AddSingleton<IPortBaudRateService, PortBaudRateService>();
         services.AddSingleton<INmeaTransmissionService, NmeaTransmissionService>();
         services.AddSingleton<ISharedMemoryProviderService, SharedMemoryProviderService>();

@@ -1,5 +1,6 @@
 ﻿using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Projects;
+using NMEASender.Wpf.Models.Projects.PS2404A;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
 
 namespace NMEASender.Wpf.Services.Projects.PS2404A;
@@ -13,23 +14,40 @@ public sealed class PS2404ASentenceComposerProfile : BaseProjectSentenceComposer
         NmeaBuildOptions options,
         INmeaSentenceBuilderService sentenceBuilder)
     {
-        bool useKose = data.KoseMode == 4;
+        bool useKose = data.KoseMode == PS2404AKoseModes.EngineAndRudder;
         double sogKnots;
         double trueCourse;
+        double magneticVariation;
         if (useKose)
         {
             sogKnots = data.KoseSogKnots;
-            trueCourse = NormalizeDegrees(data.KoseCog);
+            trueCourse = data.KoseCog;
+            magneticVariation = 0.0;
         }
         else
         {
             double dLongVel = data.LongitudinalSpeedMps * 3600.0 / NmeaConstants.NauticalMileMeters;
             double dLatVel = -data.LateralSpeedMps * 3600.0 / NmeaConstants.NauticalMileMeters;
             sogKnots = Math.Sqrt(dLongVel * dLongVel + dLatVel * dLatVel);
-            trueCourse = NormalizeDegrees(
-                Math.Atan2(data.LateralSpeedMps, data.LongitudinalSpeedMps) * NmeaConstants.ToDegrees + data.Heading);
+            trueCourse = NormalizeSingleTurn(Math.Atan2(data.LateralSpeedMps, data.LongitudinalSpeedMps) * NmeaConstants.ToDegrees + data.Heading);
+            magneticVariation = data.MagneticVariation;
         }
 
-        return sentenceBuilder.BuildVtgSentence(trueCourse, data.MagneticVariation, sogKnots, sogKnots * 1.852, options);
+        return sentenceBuilder.BuildVtgSentence(trueCourse, magneticVariation, sogKnots, sogKnots * 1.852, options);
+    }
+
+    private static double NormalizeSingleTurn(double degrees)
+    {
+        if (degrees > 360.0)
+        {
+            return degrees - 360.0;
+        }
+
+        if (degrees < 0.0)
+        {
+            return degrees + 360.0;
+        }
+
+        return degrees;
     }
 }
