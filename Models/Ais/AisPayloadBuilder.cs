@@ -31,6 +31,41 @@ public static class AisPayloadBuilder
         return EncodeAisSixBit(bits);
     }
 
+    public static string BuildLegacyPositionPayload(
+        int mmsi,
+        double latitude,
+        double longitude,
+        double sogKnots,
+        double cog,
+        double heading,
+        double rateOfTurn,
+        DateTime utcTime)
+    {
+        List<int> bits = new List<int>(168);
+        AddUnsigned(bits, 1, 6);
+        AddUnsigned(bits, 2, 2);
+        AddLegacyUnsigned(bits, mmsi, 30);
+        AddUnsigned(bits, 0, 4);
+        AddLegacyUnsigned(bits, (int)rateOfTurn, 8);
+        AddLegacyUnsigned(bits, (int)(sogKnots * 10.0), 10);
+        AddUnsigned(bits, 0, 1);
+        AddLegacySigned(bits, (int)(longitude * 600000.0), 28);
+        AddLegacySigned(bits, (int)(latitude * 600000.0), 27);
+        AddLegacyUnsigned(bits, (int)(NormalizeDegrees(cog) * 10.0), 12);
+        AddLegacyUnsigned(bits, (int)NormalizeDegrees(heading), 9);
+        AddUnsigned(bits, 53, 6);
+        AddUnsigned(bits, 0, 4);
+        AddUnsigned(bits, 0, 1);
+        AddUnsigned(bits, 0, 1);
+        AddUnsigned(bits, 0, 2);
+        AddUnsigned(bits, 1, 3);
+        AddUnsigned(bits, Math.Clamp(utcTime.Hour, 0, 31), 5);
+        AddUnsigned(bits, 0, 3);
+        AddUnsigned(bits, Math.Clamp(utcTime.Minute, 0, 63), 6);
+
+        return EncodeAisSixBit(bits);
+    }
+
     public static string BuildStaticPayload(TrafficShipData ship)
     {
         List<int> bits = new List<int>(360);
@@ -73,6 +108,18 @@ public static class AisPayloadBuilder
         }
 
         AddUnsigned(bits, value, width);
+    }
+
+    private static void AddLegacyUnsigned(List<int> bits, long value, int width)
+    {
+        long mask = (1L << width) - 1L;
+        AddUnsigned(bits, value & mask, width);
+    }
+
+    private static void AddLegacySigned(List<int> bits, long value, int width)
+    {
+        long mask = (1L << width) - 1L;
+        AddUnsigned(bits, value & mask, width);
     }
 
     private static void AddAisLegacyText(List<int> bits, string value, int length, bool upperCase)
