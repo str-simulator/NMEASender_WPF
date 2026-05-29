@@ -2,6 +2,7 @@
 using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Services.Interfaces.Projects;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Transmission;
 
@@ -20,7 +21,7 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
         List<IProjectNmeaSentenceBuilder> builderList = projectBuilders.ToList();
         if (builderList.Count == 0)
         {
-            throw new InvalidOperationException("At least one project NMEA builder must be registered.");
+            throw new TransmissionServiceRegistrationException("At least one project NMEA builder must be registered.");
         }
 
         _projectBuilders = builderList

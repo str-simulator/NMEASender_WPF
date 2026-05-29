@@ -4,6 +4,7 @@ using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Projects;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Transmission;
 
@@ -22,7 +23,7 @@ public sealed class ProjectSentenceFrameService : IProjectSentenceFrameService
         List<IProjectSentenceFramePolicy> policies = projectPolicies.ToList();
         if (policies.Count == 0)
         {
-            throw new InvalidOperationException("At least one sentence frame policy must be registered.");
+            throw new TransmissionServiceRegistrationException("At least one sentence frame policy must be registered.");
         }
 
         _projectPolicies = policies

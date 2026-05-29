@@ -7,6 +7,7 @@ using NMEASender.Wpf.Services.Interfaces.Network;
 using NMEASender.Wpf.Services.Interfaces.Projects;
 using System.IO;
 using System.IO.Ports;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Config;
 
@@ -63,7 +64,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         List<IProjectSendFlagCodec> codecs = sendFlagCodecs.ToList();
         if (codecs.Count == 0)
         {
-            throw new InvalidOperationException("At least one send flag codec must be registered.");
+            throw new ConfigServiceRegistrationException("At least one send flag codec must be registered.");
         }
 
         _sendFlagCodecs = codecs

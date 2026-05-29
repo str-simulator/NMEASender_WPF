@@ -4,6 +4,7 @@ using NMEASender.Wpf.Services.Interfaces.IO;
 using NMEASender.Wpf.Services.Interfaces.Network;
 using NMEASender.Wpf.Services.Interfaces.Ports;
 using System.IO.Ports;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.IO;
 
@@ -32,7 +33,7 @@ public sealed class OutputChannelService : IOutputChannelService
     {
         if (request is null)
         {
-            throw new ArgumentNullException(nameof(request));
+            throw new OutputChannelRequestException(nameof(request));
         }
 
         CloseAll();

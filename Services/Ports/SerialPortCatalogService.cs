@@ -1,5 +1,6 @@
 ﻿using NMEASender.Wpf.Services.Interfaces.Ports;
 using System.IO.Ports;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Ports;
 
@@ -19,7 +20,7 @@ public sealed class SerialPortCatalogService : ISerialPortCatalogService
         }
         catch (Exception ex)
         {
-            error = ex.Message;
+            error = new SerialPortCatalogException(ex).Message;
             return Array.Empty<string>();
         }
     }

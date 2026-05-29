@@ -4,6 +4,7 @@ using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Config;
 using NMEASender.Wpf.Services.Interfaces.Projects;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Transmission;
 
@@ -69,7 +70,7 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
         List<IProjectSentenceCatalogPolicy> policies = projectPolicies.ToList();
         if (policies.Count == 0)
         {
-            throw new InvalidOperationException("At least one sentence catalog policy must be registered.");
+            throw new TransmissionServiceRegistrationException("At least one sentence catalog policy must be registered.");
         }
 
         _projectPolicies = policies

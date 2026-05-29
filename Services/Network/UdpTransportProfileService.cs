@@ -2,6 +2,7 @@
 using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Services.Interfaces.Network;
 using NMEASender.Wpf.Services.Interfaces.Projects;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Network;
 
@@ -20,7 +21,7 @@ public sealed class UdpTransportProfileService : IUdpTransportProfileService
         List<IProjectUdpTransportProfileStore> stores = projectStores.ToList();
         if (stores.Count == 0)
         {
-            throw new InvalidOperationException("At least one UDP transport profile store must be registered.");
+            throw new UdpTransportProfileRegistrationException("At least one UDP transport profile store must be registered.");
         }
 
         _projectStores = stores

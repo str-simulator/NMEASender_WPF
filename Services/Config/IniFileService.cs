@@ -1,5 +1,6 @@
 ﻿using NMEASender.Wpf.Services.Interfaces.Config;
 using System.IO;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Config;
 
@@ -83,7 +84,7 @@ public sealed class IniFileService : IIniFileService
     {
         if (other is not IniFileService source)
         {
-            throw new ArgumentException("Unsupported INI implementation.", nameof(other));
+            throw new UnsupportedIniImplementationException(other);
         }
 
         foreach (KeyValuePair<string, Dictionary<string, string>> sectionPair in source._sections)
