@@ -1,8 +1,11 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Models.UI;
+using NMEASender.Wpf.Services.Interfaces.Search;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Net;
 using System.Net.Sockets;
 
@@ -19,6 +22,7 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
     private readonly string _multicastInterfaceAddress;
     private readonly bool _useRequestedPort;
     private readonly bool _supportsPerSentenceMulticastAddress;
+    private readonly ISentenceSearchService _sentenceSearchService;
 
     [ObservableProperty]
     private string _validationMessage = string.Empty;
@@ -33,13 +37,19 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _multicastAddress = "225.0.0.0";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSentenceUdpSearchText))]
+    private string _sentenceUdpSearchText = string.Empty;
+
     public PortBaudRateSettingsViewModel(
+        ISentenceSearchService sentenceSearchService,
         IReadOnlyDictionary<string, int> portBaudRates,
         IReadOnlyList<int>? baudRateOptions = null,
         IReadOnlyList<SentenceUdpPortSetting>? sentenceUdpPortSettings = null,
         UdpTransportOptions? udpTransportOptions = null,
         bool supportsPerSentenceMulticastAddress = false)
     {
+        _sentenceSearchService = sentenceSearchService ?? throw new ArgumentNullException(nameof(sentenceSearchService));
         _supportsPerSentenceMulticastAddress = supportsPerSentenceMulticastAddress;
         UdpTransportOptions effectiveUdpOptions = (udpTransportOptions ?? UdpTransportOptions.CreateDefault())
             .WithFallbackPort(40014);
@@ -75,11 +85,16 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         {
             SentenceUdpPorts.Add(new SentenceUdpPortItem(setting.RowKey, setting.SentenceLabel, setting.UdpPort, setting.UdpAddress));
         }
+
+        HookSentenceUdpRows();
+        RefreshSentenceUdpFilter();
     }
 
     public ObservableCollection<PortBaudRateItem> PortBaudRates { get; } = new();
 
     public ObservableCollection<SentenceUdpPortItem> SentenceUdpPorts { get; } = new();
+
+    public ObservableCollection<SentenceUdpPortItem> FilteredSentenceUdpPorts { get; } = new();
 
     public IReadOnlyList<int> BaudRateOptions { get; }
 
@@ -119,11 +134,18 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
 
     public bool IsSentenceMulticastAddressEditable => _supportsPerSentenceMulticastAddress && SelectedUdpMode == UdpTransportMode.Multicast;
 
+    public bool HasSentenceUdpSearchText => !string.IsNullOrWhiteSpace(SentenceUdpSearchText);
+
     public event EventHandler<bool>? CloseRequested;
 
     partial void OnMulticastAddressChanged(string value)
     {
         ApplyMulticastAddressToSentenceRows(value);
+    }
+
+    partial void OnSentenceUdpSearchTextChanged(string value)
+    {
+        RefreshSentenceUdpFilter();
     }
 
     partial void OnSelectedUdpModeChanged(UdpTransportMode value)
@@ -234,6 +256,12 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         CloseRequested?.Invoke(this, false);
     }
 
+    [RelayCommand]
+    private void ClearSentenceUdpSearch()
+    {
+        SentenceUdpSearchText = string.Empty;
+    }
+
     private static bool IsMulticastAddress(IPAddress address)
     {
         byte[] bytes = address.GetAddressBytes();
@@ -270,6 +298,60 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         foreach (SentenceUdpPortItem row in SentenceUdpPorts)
         {
             row.UdpAddress = normalizedAddress;
+        }
+    }
+
+    private void RefreshSentenceUdpFilter()
+    {
+        IEnumerable<SentenceUdpPortItem> query = _sentenceSearchService.FilterSentenceUdpPorts(SentenceUdpPorts, SentenceUdpSearchText);
+
+        FilteredSentenceUdpPorts.Clear();
+        foreach (SentenceUdpPortItem item in query)
+        {
+            FilteredSentenceUdpPorts.Add(item);
+        }
+    }
+
+    private void HookSentenceUdpRows()
+    {
+        SentenceUdpPorts.CollectionChanged += SentenceUdpPorts_CollectionChanged;
+        foreach (SentenceUdpPortItem row in SentenceUdpPorts)
+        {
+            row.PropertyChanged += SentenceUdpRow_PropertyChanged;
+        }
+    }
+
+    private void SentenceUdpPorts_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (SentenceUdpPortItem row in e.OldItems.OfType<SentenceUdpPortItem>())
+            {
+                row.PropertyChanged -= SentenceUdpRow_PropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (SentenceUdpPortItem row in e.NewItems.OfType<SentenceUdpPortItem>())
+            {
+                row.PropertyChanged += SentenceUdpRow_PropertyChanged;
+            }
+        }
+
+        RefreshSentenceUdpFilter();
+    }
+
+    private void SentenceUdpRow_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(SentenceUdpSearchText))
+        {
+            return;
+        }
+
+        if (e.PropertyName is nameof(SentenceUdpPortItem.UdpPort) or nameof(SentenceUdpPortItem.UdpAddress))
+        {
+            RefreshSentenceUdpFilter();
         }
     }
 }

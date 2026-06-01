@@ -1,4 +1,5 @@
-﻿using NMEASender.Wpf.Services.Interfaces.Ports;
+﻿using NMEASender.Wpf.Exceptions;
+using NMEASender.Wpf.Services.Interfaces.Ports;
 using System.IO.Ports;
 using System.Text;
 
@@ -49,8 +50,7 @@ public sealed class SerialPortHubService : ISerialPortHubService
         {
             if (_disposed)
             {
-                error = "Serial port hub is disposed.";
-                return false;
+                throw new SerialPortOpenException(normalizedPortName, "Serial port hub is disposed.");
             }
 
             if (_ports.TryGetValue(normalizedPortName, out SerialPort? existingPort) && existingPort.IsOpen)
@@ -66,9 +66,15 @@ public sealed class SerialPortHubService : ISerialPortHubService
             _ports[normalizedPortName] = port;
             return true;
         }
-        catch (Exception ex)
+        catch (PortsException ex)
         {
             error = ex.Message;
+            ClosePort(normalizedPortName);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            error = new SerialPortOpenException(normalizedPortName, ex.Message, ex).Message;
             ClosePort(normalizedPortName);
             return false;
         }
@@ -82,16 +88,21 @@ public sealed class SerialPortHubService : ISerialPortHubService
         {
             if (!_ports.TryGetValue(normalizedPortName, out SerialPort? port) || !port.IsOpen)
             {
-                error = "COM port is not open.";
-                return false;
+                throw new SerialPortWriteException(normalizedPortName, "COM port is not open.");
             }
 
             port.Write(sentence);
             return true;
         }
-        catch (Exception ex)
+        catch (PortsException ex)
         {
             error = ex.Message;
+            ClosePort(normalizedPortName);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            error = new SerialPortWriteException(normalizedPortName, ex.Message, ex).Message;
             ClosePort(normalizedPortName);
             return false;
         }

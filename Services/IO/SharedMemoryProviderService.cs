@@ -1,6 +1,10 @@
-﻿using NMEASender.Wpf.Models.Core;
+﻿using NMEASender.Wpf.Exceptions;
+using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Models.SharedMemory;
+using NMEASender.Wpf.Services.Interfaces.Config;
 using NMEASender.Wpf.Services.Interfaces.IO;
+using NMEASender.Wpf.Services.Interfaces.Projects;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
@@ -11,33 +15,47 @@ namespace NMEASender.Wpf.Services.IO;
 public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
 {
     private const string OwnShipMapName = "STR_OWNSHIP_DATA";
+    private readonly INmeaSenderConfigService _config;
+    private readonly IReadOnlyDictionary<ProjectType, IProjectSharedMemoryExtensionReader> _extensionReaders;
     private MemoryMappedFile? _ownShipMemory;
     private MemoryMappedViewAccessor? _ownShipView;
     private readonly Dictionary<int, TrafficShipMemory> _trafficShipViews = new();
+
+    public SharedMemoryProviderService(
+        INmeaSenderConfigService config,
+        IEnumerable<IProjectSharedMemoryExtensionReader> extensionReaders)
+    {
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+        if (extensionReaders is null)
+        {
+            throw new ArgumentNullException(nameof(extensionReaders));
+        }
+
+        _extensionReaders = extensionReaders
+            .GroupBy(reader => reader.ProjectType)
+            .ToDictionary(group => group.Key, group => group.First());
+    }
 
     public bool TryRead(out NmeaDataDto data, out string error)
     {
         data = new NmeaDataDto();
         error = string.Empty;
 
-        if (!EnsureOwnShipOpen(out error))
-        {
-            return false;
-        }
-
         try
         {
+            EnsureOwnShipOpen();
             MemoryMappedViewAccessor view = _ownShipView!;
             if (view.Capacity < Marshal.SizeOf<OwnShipDataNative>())
             {
-                error = $"STR_OWNSHIP_DATA size is too small ({view.Capacity} bytes).";
-                ResetOwnShipHandle();
-                return false;
+                throw new SharedMemoryReadException(
+                    $"{OwnShipMapName} size is too small ({view.Capacity} bytes).",
+                    OwnShipMapName);
             }
 
             OwnShipDataNative own = ReadStruct<OwnShipDataNative>(view);
             ushort trafficCount = own.m_wTrafficCount;
             data = ReadOwnShip(own);
+            ApplyProjectExtension(view, data);
             data.UsesTrafficShipData = true;
             data.TrafficShips = ReadTrafficShips(trafficCount, data.CurrentSet, data.CurrentDrift);
             if (data.IsFinished)
@@ -48,9 +66,18 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
 
             return true;
         }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException or UnauthorizedAccessException)
+        catch (SharedMemoryException ex)
         {
             error = ex.Message;
+            ResetOwnShipHandle();
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException or UnauthorizedAccessException)
+        {
+            error = new SharedMemoryReadException(
+                $"{OwnShipMapName} read failed: {ex.Message}",
+                OwnShipMapName,
+                ex).Message;
             ResetOwnShipHandle();
             return false;
         }
@@ -61,35 +88,33 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
         ResetOwnShipHandle();
     }
 
-    private bool EnsureOwnShipOpen(out string error)
+    private void EnsureOwnShipOpen()
     {
-        error = string.Empty;
         if (_ownShipView is not null)
         {
-            return true;
+            return;
         }
 
         try
         {
             _ownShipMemory = MemoryMappedFile.OpenExisting(OwnShipMapName, MemoryMappedFileRights.Read);
             _ownShipView = _ownShipMemory.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
-            return true;
         }
-        catch (FileNotFoundException)
+        catch (FileNotFoundException ex)
         {
-            error = $"{OwnShipMapName} shared memory was not found.";
+            ResetOwnShipHandle();
+            throw new SharedMemoryMapNotFoundException(OwnShipMapName, ex);
         }
         catch (UnauthorizedAccessException ex)
         {
-            error = $"{OwnShipMapName} access denied: {ex.Message}";
+            ResetOwnShipHandle();
+            throw new SharedMemoryAccessDeniedException(OwnShipMapName, ex);
         }
         catch (IOException ex)
         {
-            error = $"{OwnShipMapName} open failed: {ex.Message}";
+            ResetOwnShipHandle();
+            throw new SharedMemoryOpenException(OwnShipMapName, ex);
         }
-
-        ResetOwnShipHandle();
-        return false;
     }
 
     private static NmeaDataDto ReadOwnShip(OwnShipDataNative own)
@@ -123,6 +148,8 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
             Longitude = gpsLongitude,
             OwnLatitude = ownLatitude,
             OwnLongitude = ownLongitude,
+            OwnshipPositionX = SafeDouble(own.m_OwnshipPos.x),
+            OwnshipPositionY = SafeDouble(own.m_OwnshipPos.y),
             SpeedKnots = speedKnots,
             Heading = NormalizeDegrees(SafeDouble(own.OwnshipHeading)),
             GyroHeading = NormalizeDegrees(SafeDouble(own.GyroHeading)),
@@ -132,8 +159,8 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
             LongitudinalSpeedMps = longitudinalSpeed,
             LateralSpeedMps = lateralSpeed,
             OwnTurningRate = SafeDouble(own.OwnTurningRate),
-            RudderPort = SafeDouble(own.RudderValue),
-            RudderStbd = SafeDouble(own.RudderValue), // 확인 필요 (RudderValue가 하나만 있는지 확인 필요)
+            RudderPort = SafeDouble(own.RudderValue1),
+            RudderStbd = SafeDouble(own.RudderValue0),
             RpmPort = SafeDouble(own.Rpm0),
             RpmStbd = SafeDouble(own.Rpm1),
             PitchPort = SafeDouble(own.Pitch0),
@@ -152,8 +179,6 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
             HeightTide = SafeDouble(own.HeightTide),
             DatumOffsetLatitude = SafeDouble(own.m_OriginLatLon.x),
             DatumOffsetLongitude = SafeDouble(own.m_OriginLatLon.y),
-            KoseSogKnots = speedKnots,
-            KoseCog = NormalizeDegrees(SafeDouble(own.OwnshipHeading)),
             ThrustCommandBow = SafeDouble(own.ThrustCommand0),
             ThrustCommandStern = SafeDouble(own.ThrustCommand1),
             ThrusterThrustBow = SafeDouble(own.ThrusterThrust0),
@@ -170,6 +195,14 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
         };
     }
 
+    private void ApplyProjectExtension(MemoryMappedViewAccessor view, NmeaDataDto data)
+    {
+        if (_extensionReaders.TryGetValue(_config.ProjectType, out IProjectSharedMemoryExtensionReader? reader))
+        {
+            reader.Apply(view, Marshal.SizeOf<OwnShipDataNative>(), data);
+        }
+    }
+
     private void ResetOwnShipHandle()
     {
         _ownShipView?.Dispose();
@@ -179,16 +212,15 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
         ResetTrafficShipHandles();
     }
 
-    private List<TrafficShipData> ReadTrafficShips(ushort count, double currentSet, double currentDrift)
+    private List<TrafficShipData> ReadTrafficShips(ushort tshipCnt, double currentSet, double currentDrift)
     {
         // Match legacy behavior: reopen traffic ship shared memory every read cycle.
         // Some producers recreate these mappings frequently, which can stale cached handles.
         ResetTrafficShipHandles();
 
         List<TrafficShipData> ships = new List<TrafficShipData>();
-        int safeCount = count == 0 ? 500 : Math.Min((int)count, 500);
 
-        for (int index = 0; index < safeCount; index++)
+        for (int index = 0; index < tshipCnt; index++)
         {
             if (!EnsureTrafficShipOpen(index, out TrafficShipMemory memory))
             {
@@ -205,7 +237,7 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
 
                 TrafficShipData ship = ReadTrafficShip(ReadStruct<TShipNative>(memory.View), currentSet, currentDrift);
                 ship.SharedIndex = index;
-                if (ship.IsAisEnabled && IsValidCoordinate(ship.Latitude, ship.Longitude))
+                if (IsValidCoordinate(ship.Latitude, ship.Longitude))
                 {
                     ships.Add(ship);
                 }
@@ -228,16 +260,37 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
 
         try
         {
-            MemoryMappedFile map = MemoryMappedFile.OpenExisting($"STR_TSHIP_DATA_#{index}", MemoryMappedFileRights.Read);
-            MemoryMappedViewAccessor view = map.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
-            memory = new TrafficShipMemory(map, view);
+            memory = OpenTrafficShip(index);
             _trafficShipViews[index] = memory;
             return true;
         }
-        catch (Exception ex) when (ex is FileNotFoundException or IOException or UnauthorizedAccessException)
+        catch (SharedMemoryException)
         {
             memory = null!;
             return false;
+        }
+    }
+
+    private static TrafficShipMemory OpenTrafficShip(int index)
+    {
+        string mapName = $"STR_TSHIP_DATA_#{index}";
+        try
+        {
+            MemoryMappedFile map = MemoryMappedFile.OpenExisting(mapName, MemoryMappedFileRights.Read);
+            MemoryMappedViewAccessor view = map.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
+            return new TrafficShipMemory(map, view);
+        }
+        catch (FileNotFoundException ex)
+        {
+            throw new SharedMemoryMapNotFoundException(mapName, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new SharedMemoryAccessDeniedException(mapName, ex);
+        }
+        catch (IOException ex)
+        {
+            throw new SharedMemoryOpenException(mapName, ex);
         }
     }
 
@@ -261,10 +314,13 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
             Beam = SafeDouble(shipData.m_Beam),
             Latitude = SafeDouble(shipData.m_TShipLatLon.x),
             Longitude = SafeDouble(shipData.m_TShipLatLon.y),
+            PositionX = SafeDouble(shipData.m_TrafficPos.x),
+            PositionY = SafeDouble(shipData.m_TrafficPos.y),
             Heading = trueHeading,
             CourseOverGround = courseOverGround,
             LongitudinalSpeedMps = longitudinalSpeed,
-            LateralSpeedMps = lateralSpeed
+            LateralSpeedMps = lateralSpeed,
+            TurningRate = SafeDouble(shipData.m_TurningRate)
         };
     }
 
@@ -362,7 +418,6 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
         return degrees < 0.0 ? degrees + 360.0 : degrees;
     }
 
-
     private sealed class TrafficShipMemory : IDisposable
     {
         public TrafficShipMemory(MemoryMappedFile map, MemoryMappedViewAccessor view)
@@ -382,4 +437,3 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
         }
     }
 }
-

@@ -5,6 +5,7 @@ using NMEASender.Wpf.Services.Interfaces.IO;
 using NMEASender.Wpf.Services.Interfaces.Ports;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
 using System.Diagnostics;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Transmission;
 
@@ -31,7 +32,7 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
     {
         if (context is null)
         {
-            throw new ArgumentNullException(nameof(context));
+            throw new TransmissionContextException(nameof(context));
         }
 
         _projectSentenceFrameService.Reset(context.Config.ProjectType, context.Config.RightRpm);

@@ -1,4 +1,5 @@
-﻿using NMEASender.Wpf.Models.Network;
+﻿using NMEASender.Wpf.Exceptions;
+using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Services.Interfaces.Network;
 using System.Net;
 using System.Net.Sockets;
@@ -22,14 +23,12 @@ public sealed class UdpService : IUdpService
         {
             if (_disposed)
             {
-                error = "UDP sender is disposed.";
-                return false;
+                throw new UdpOpenException("UDP sender is disposed.");
             }
 
             if (options is null)
             {
-                error = "UDP transport options are required.";
-                return false;
+                throw new UdpOpenException("UDP transport options are required.");
             }
 
             UdpTransportOptions normalized = options.WithFallbackPort(
@@ -37,9 +36,7 @@ public sealed class UdpService : IUdpService
 
             if (!normalized.IsEnabled)
             {
-                error = "UDP transport is disabled.";
-                _isOpen = false;
-                return false;
+                throw new UdpOpenException("UDP transport is disabled.");
             }
 
             _options = normalized;
@@ -64,9 +61,15 @@ public sealed class UdpService : IUdpService
             _isOpen = true;
             return true;
         }
-        catch (Exception ex)
+        catch (NetworkException ex)
         {
             error = ex.Message;
+            _isOpen = false;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            error = new UdpOpenException($"UDP open failed: {ex.Message}", ex).Message;
             _isOpen = false;
             return false;
         }
@@ -79,21 +82,18 @@ public sealed class UdpService : IUdpService
         {
             if (!_isOpen)
             {
-                error = "UDP sender is not open.";
-                return false;
+                throw new UdpSendException("UDP sender is not open.");
             }
 
             if (!_options.IsEnabled)
             {
-                error = "UDP transport is disabled.";
-                return false;
+                throw new UdpSendException("UDP transport is disabled.");
             }
 
             int targetPort = _options.ResolveTargetPort(port);
             if (targetPort is < 1 or > 65535)
             {
-                error = "UDP port must be between 1 and 65535.";
-                return false;
+                throw new UdpSendException("UDP port must be between 1 and 65535.");
             }
 
             string targetAddress = string.IsNullOrWhiteSpace(addressOverride)
@@ -101,8 +101,7 @@ public sealed class UdpService : IUdpService
                 : addressOverride.Trim();
             if (!IPAddress.TryParse(targetAddress, out IPAddress? address))
             {
-                error = $"Invalid UDP address: {targetAddress}";
-                return false;
+                throw new UdpSendException($"Invalid UDP address: {targetAddress}");
             }
 
             byte[] bytes = Encoding.ASCII.GetBytes(sentence);
@@ -110,9 +109,15 @@ public sealed class UdpService : IUdpService
             _client.Send(bytes, bytes.Length, endPoint);
             return true;
         }
-        catch (Exception ex)
+        catch (NetworkException ex)
         {
             error = ex.Message;
+            _isOpen = false;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            error = new UdpSendException($"UDP send failed: {ex.Message}", ex).Message;
             _isOpen = false;
             return false;
         }

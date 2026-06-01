@@ -1,15 +1,19 @@
-﻿using NMEASender.Wpf.Services.Interfaces.Workflow;
+using NMEASender.Wpf.Services.Interfaces.Search;
+using NMEASender.Wpf.Services.Interfaces.Workflow;
 using NMEASender.Wpf.ViewModels.Panels;
 
 namespace NMEASender.Wpf.ViewModels.Shell;
 
 public sealed class MainViewModel : IDisposable
 {
-    public MainViewModel(MainStateStore state, IMainWorkflowService workflow)
+    public MainViewModel(
+        MainStateStore state,
+        IMainWorkflowService workflow,
+        ISentenceSearchService sentenceSearchService)
     {
         TopToolbar = new TopToolbarViewModel(state, workflow);
         ManualLog = new ManualLogViewModel(state, workflow);
-        SentencePanel = new SentencePanelViewModel(state, workflow);
+        SentencePanel = new SentencePanelViewModel(state, workflow, sentenceSearchService);
 
         _workflow = workflow;
     }

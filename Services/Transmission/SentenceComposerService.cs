@@ -3,6 +3,7 @@ using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Projects;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Transmission;
 
@@ -25,7 +26,7 @@ public sealed class SentenceComposerService : ISentenceComposerService
         List<IProjectSentenceComposerProfile> profiles = projectProfiles.ToList();
         if (profiles.Count == 0)
         {
-            throw new InvalidOperationException("At least one sentence composer profile must be registered.");
+            throw new TransmissionServiceRegistrationException("At least one sentence composer profile must be registered.");
         }
 
         _projectProfiles = profiles

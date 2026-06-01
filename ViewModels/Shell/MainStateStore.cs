@@ -40,6 +40,9 @@ public sealed partial class MainStateStore : ObservableObject
     private string _udpPortText = "40014";
 
     [ObservableProperty]
+    private string _sentenceSearchText = string.Empty;
+
+    [ObservableProperty]
     private string _longitudeText = "129.0000";
 
     [ObservableProperty]

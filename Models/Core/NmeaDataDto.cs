@@ -7,6 +7,8 @@ public sealed class NmeaDataDto
     public double Longitude { get; set; } = 129.0;
     public double OwnLatitude { get; set; } = 35.0;
     public double OwnLongitude { get; set; } = 129.0;
+    public double OwnshipPositionX { get; set; } = 0.0;
+    public double OwnshipPositionY { get; set; } = 0.0;
     public double SpeedKnots { get; set; } = 0.0;
     public double Heading { get; set; } = 0.0;
     public double GyroHeading { get; set; } = 0.0;
@@ -76,10 +78,13 @@ public sealed class TrafficShipData
     public double Beam { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }
+    public double PositionX { get; set; }
+    public double PositionY { get; set; }
     public double Heading { get; set; }
     public double CourseOverGround { get; set; }
     public double LongitudinalSpeedMps { get; set; }
     public double LateralSpeedMps { get; set; }
+    public double TurningRate { get; set; }
 }
 
 public static class NmeaConstants

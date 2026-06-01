@@ -338,7 +338,9 @@ internal struct OwnShipDataNative
     public double OwnshipRoll => m_OwnshipRoll;
     public double OwnshipLatVel => m_OwnshipLatVel;
     public double OwnshipLongVel => m_OwnshipLongVel;
-    public double RudderValue => m_RudderValue is { Length: > 0 } ? m_RudderValue[0] : 0.0;
+    public double RudderValue => RudderValue0;
+    public double RudderValue0 => m_RudderValue is { Length: > 0 } ? m_RudderValue[0] : 0.0;
+    public double RudderValue1 => m_RudderValue is { Length: > 1 } ? m_RudderValue[1] : 0.0;
     public double EngineCommand0 => m_EngineCommand is { Length: > 0 } ? m_EngineCommand[0] : 0.0;
     public double EngineCommand1 => m_EngineCommand is { Length: > 1 } ? m_EngineCommand[1] : 0.0;
     public double Rpm0 => m_RPM is { Length: > 0 } ? m_RPM[0] : 0.0;

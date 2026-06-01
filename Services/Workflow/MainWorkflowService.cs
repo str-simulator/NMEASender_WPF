@@ -17,6 +17,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Threading;
+using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Workflow;
 
@@ -169,7 +170,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
         }
         catch (Exception ex)
         {
-            AddLog($"START failed: {ex.Message}");
+            AddLog(new WorkflowStartException(ex).Message);
             Stop();
         }
         finally
@@ -892,7 +893,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
         }
         catch (Exception ex)
         {
-            AddLog($"Config save failed: {ex.Message}");
+            AddLog(new WorkflowConfigSaveException(ex).Message);
         }
     }
 

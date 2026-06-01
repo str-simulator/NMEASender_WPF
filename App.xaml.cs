@@ -9,6 +9,7 @@ using NMEASender.Wpf.Services.Interfaces.Mapping;
 using NMEASender.Wpf.Services.Interfaces.Network;
 using NMEASender.Wpf.Services.Interfaces.Ports;
 using NMEASender.Wpf.Services.Interfaces.Projects;
+using NMEASender.Wpf.Services.Interfaces.Search;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
 using NMEASender.Wpf.Services.Interfaces.Workflow;
 using NMEASender.Wpf.Services.IO;
@@ -18,7 +19,9 @@ using NMEASender.Wpf.Services.Ports;
 using NMEASender.Wpf.Services.Projects;
 using NMEASender.Wpf.Services.Projects.PS000;
 using NMEASender.Wpf.Services.Projects.PS2404A;
+using NMEASender.Wpf.Services.Projects.PS2404A.IO;
 using NMEASender.Wpf.Services.Projects.PS2603;
+using NMEASender.Wpf.Services.Search;
 using NMEASender.Wpf.Services.Transmission;
 using NMEASender.Wpf.Services.Workflow;
 using NMEASender.Wpf.ViewModels.Shell;
@@ -65,6 +68,7 @@ public partial class App : Application
         services.AddSingleton<IProjectSentenceComposerProfile>(_ => new DefaultProjectSentenceComposerProfile(ProjectType.PS000));
         services.AddSingleton<IProjectSentenceComposerProfile, PS2404ASentenceComposerProfile>();
         services.AddSingleton<IManualInputMapperService, ManualInputMapperService>();
+        services.AddSingleton<ISentenceSearchService, SentenceSearchService>();
         services.AddSingleton<IOutputChannelService, OutputChannelService>();
 
         services.AddSingleton<IProjectSentenceFramePolicy, Ps2603SentenceFramePolicy>();
@@ -75,6 +79,7 @@ public partial class App : Application
         services.AddSingleton<IProjectSentenceCatalogPolicy>(_ => new DefaultProjectSentenceCatalogPolicy(ProjectType.PS2603));
         services.AddSingleton<IProjectSentenceCatalogPolicy>(_ => new DefaultProjectSentenceCatalogPolicy(ProjectType.PS000));
         services.AddSingleton<IProjectSentenceCatalogPolicy, PS2404ASentenceCatalogPolicy>();
+        services.AddSingleton<IProjectSharedMemoryExtensionReader, PS2404ASharedMemoryExtensionReader>();
         services.AddSingleton<IPortBaudRateService, PortBaudRateService>();
         services.AddSingleton<INmeaTransmissionService, NmeaTransmissionService>();
         services.AddSingleton<ISharedMemoryProviderService, SharedMemoryProviderService>();

@@ -21,6 +21,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <Button Grid.Column="0"
@@ -86,14 +87,30 @@
                         Style="{StaticResource ToolbarButtonStyle}" />
             </StackPanel>
 
-            <Button Grid.Column="9"
+            <StackPanel Grid.Column="9"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                <TextBox Width="210"
+                         Text="{Binding SentenceSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Search sentence" />
+                <Button Width="28"
+                        MinWidth="28"
+                        Margin="6,0,0,0"
+                        Padding="0"
+                        Command="{Binding ClearSentenceSearchCommand}"
+                        Content="x"
+                        Visibility="{Binding HasSentenceSearchText, Converter={StaticResource BoolToVisibility}}" />
+            </StackPanel>
+
+            <Button Grid.Column="10"
                     Margin="0,0,8,0"
                     HorizontalAlignment="Right"
                     Command="{Binding OpenSettingsCommand}"
                     Content="Settings"
                     Style="{StaticResource ToolbarButtonStyle}" />
 
-            <Button Grid.Column="10"
+            <Button Grid.Column="11"
                     HorizontalAlignment="Right"
                     Command="{Binding ExitCommand}"
                     Content="EXIT"
