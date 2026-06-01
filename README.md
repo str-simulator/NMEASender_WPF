@@ -13,9 +13,11 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - 문장별 COM/UDP 송신 분리 체크
 - ALL COM / ALL UDP 일괄 체크
 - Sentence 행 복제/삭제(+/-)
+- 상단 툴바 Sentence 검색(문장명/ID/NMEA #1/NMEA #2 포함)
 - COM 포트별 BaudRate 설정
 - Sentence(행)별 UDP 포트 설정
 - Sentence(행)별 UDP Multicast 주소 설정
+- Settings > Sentence UDP Endpoint 검색 + `x` 일괄 클리어
 - 설정창 Broadcast/Multicast 모드 선택
 - START 중 COM/UDP 동적 오픈/클로즈
 - 로그 자동 하단 추적 + 사용자 스크롤 해제/복귀
@@ -34,6 +36,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `UDPConfig.ini` 기반 UDP 설정 분리
 - 문장별 UDP Port/Multicast Address 저장 및 송신 반영
 - 전역 `Use UDP` 체크박스 제거, 각 Sentence 행의 UDP 체크 상태로 송신 여부 결정
+- 검색 기능 추가로 문장명/ID/NMEA #1/#2 포함 검색 지원
 
 ## 4. 최신 구조 업데이트
 
@@ -57,10 +60,10 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
   - `Panels`: 상단/좌측/우측 패널
   - `Dialogs`: 설정 창
 - `Services`
-  - `Application`, `Config`, `Workflow`, `Transmission`, `Ports`, `IO`, `Network`
+  - `Application`, `Config`, `Workflow`, `Transmission`, `Ports`, `IO`, `Network`, `Search`
   - `Projects`: 프로젝트별 구현체(PS2603/PS000/PS2404A)
 - `Services/Interfaces`
-  - 기능별로 `Application`, `Config`, `Workflow`, `Transmission`, `Ports`, `IO`, `Network`, `Projects` 하위 분리
+  - 기능별로 `Application`, `Config`, `Workflow`, `Transmission`, `Ports`, `IO`, `Network`, `Projects`, `Search` 하위 분리
 - `Behaviors/Core`
   - 공통 Attached Behavior
 
@@ -141,6 +144,9 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
   - `Services/Ports/*`
   - `Services/Network/UdpService.cs`
   - `Services/Network/UdpTransportProfileService.cs`
+- 검색
+  - `Services/Search/SentenceSearchService.cs`
+  - `Services/Interfaces/Search/ISentenceSearchService.cs`
 
 ## 7. 프로젝트별 구현체 위치
 
