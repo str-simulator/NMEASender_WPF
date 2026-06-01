@@ -199,7 +199,7 @@
                     <ScrollViewer.Resources>
                         <Style BasedOn="{StaticResource LogScrollBarStyle}" TargetType="{x:Type ScrollBar}" />
                     </ScrollViewer.Resources>
-                    <ItemsControl ItemTemplate="{StaticResource SentenceRowTemplate}" ItemsSource="{Binding GpsSentences}" />
+                    <ItemsControl ItemTemplate="{StaticResource SentenceRowTemplate}" ItemsSource="{Binding GpsSentencesView}" />
                 </ScrollViewer>
             </Grid>
         </GroupBox>
@@ -266,7 +266,7 @@
                     <ScrollViewer.Resources>
                         <Style BasedOn="{StaticResource LogScrollBarStyle}" TargetType="{x:Type ScrollBar}" />
                     </ScrollViewer.Resources>
-                    <ItemsControl ItemTemplate="{StaticResource SentenceRowTemplate}" ItemsSource="{Binding OtherSentences}" />
+                    <ItemsControl ItemTemplate="{StaticResource SentenceRowTemplate}" ItemsSource="{Binding OtherSentencesView}" />
                 </ScrollViewer>
             </Grid>
         </GroupBox>

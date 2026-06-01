@@ -22,6 +22,7 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
         RefreshPortsCommand = new RelayCommand(_workflow.RefreshPorts);
         ApplyDefaultPortCommand = new RelayCommand(_workflow.ApplyDefaultPort);
         ApplyDefaultUdpPortCommand = new RelayCommand(_workflow.ApplyDefaultUdpPort);
+        ClearSentenceSearchCommand = new RelayCommand(ClearSentenceSearch);
         OpenSettingsCommand = new RelayCommand(_workflow.OpenSettings);
         ExitCommand = new RelayCommand(_workflow.Exit);
 
@@ -62,6 +63,14 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
         set => _state.UdpPortText = value;
     }
 
+    public string SentenceSearchText
+    {
+        get => _state.SentenceSearchText;
+        set => _state.SentenceSearchText = value;
+    }
+
+    public bool HasSentenceSearchText => !string.IsNullOrWhiteSpace(_state.SentenceSearchText);
+
     public IAsyncRelayCommand StartCommand { get; }
 
     public IRelayCommand StopCommand { get; }
@@ -71,6 +80,8 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
     public IRelayCommand ApplyDefaultPortCommand { get; }
 
     public IRelayCommand ApplyDefaultUdpPortCommand { get; }
+
+    public IRelayCommand ClearSentenceSearchCommand { get; }
 
     public IRelayCommand OpenSettingsCommand { get; }
 
@@ -91,6 +102,11 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
         return _state.IsRunning;
     }
 
+    private void ClearSentenceSearch()
+    {
+        _state.SentenceSearchText = string.Empty;
+    }
+
     private void State_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(e.PropertyName))
@@ -104,6 +120,11 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IsComSettingsEditable));
             StartCommand.NotifyCanExecuteChanged();
             StopCommand.NotifyCanExecuteChanged();
+        }
+
+        if (e.PropertyName == nameof(MainStateStore.SentenceSearchText))
+        {
+            OnPropertyChanged(nameof(HasSentenceSearchText));
         }
     }
 }

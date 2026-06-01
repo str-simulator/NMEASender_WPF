@@ -145,6 +145,7 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
@@ -152,7 +153,25 @@
                                        FontWeight="SemiBold"
                                        Text="Sentence UDP Endpoint" />
 
-                            <ItemsControl Grid.Row="1" ItemsSource="{Binding SentenceUdpPorts}">
+                            <Grid Grid.Row="1" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding SentenceUdpSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Search sentence endpoint" />
+                                <Button Grid.Column="1"
+                                        Width="28"
+                                        MinWidth="28"
+                                        Margin="6,0,0,0"
+                                        Padding="0"
+                                        Command="{Binding ClearSentenceUdpSearchCommand}"
+                                        Content="x"
+                                        Visibility="{Binding HasSentenceUdpSearchText, Converter={StaticResource BoolToVisibility}}" />
+                            </Grid>
+
+                            <ItemsControl Grid.Row="2" ItemsSource="{Binding FilteredSentenceUdpPorts}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="0,0,0,8">

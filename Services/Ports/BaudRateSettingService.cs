@@ -1,6 +1,7 @@
-﻿using NMEASender.Wpf.Models.Network;
+using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Ports;
+using NMEASender.Wpf.Services.Interfaces.Search;
 using NMEASender.Wpf.ViewModels.Dialogs;
 using NMEASender.Wpf.Views.Dialogs;
 using System.Windows;
@@ -9,6 +10,13 @@ namespace NMEASender.Wpf.Services.Ports;
 
 public sealed class BaudRateSettingService : IBaudRateSettingService
 {
+    private readonly ISentenceSearchService _sentenceSearchService;
+
+    public BaudRateSettingService(ISentenceSearchService sentenceSearchService)
+    {
+        _sentenceSearchService = sentenceSearchService ?? throw new ArgumentNullException(nameof(sentenceSearchService));
+    }
+
     public bool TryShow(
         IReadOnlyDictionary<string, int> currentPortBaudRates,
         IReadOnlyList<int> baudRateOptions,
@@ -21,6 +29,7 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
         out UdpTransportOptions updatedUdpTransportOptions)
     {
         PortBaudRateSettingsViewModel viewModel = new(
+            _sentenceSearchService,
             currentPortBaudRates,
             baudRateOptions,
             currentSentenceUdpPorts,
