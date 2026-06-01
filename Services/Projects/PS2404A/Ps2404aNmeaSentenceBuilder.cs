@@ -160,7 +160,7 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
         Ps2404aVbwValues values = CalculatePs2404aVbwValues(data);
         string body = string.Create(
             Invariant,
-            $"GPVBW,{FirstLegacyCharacter(FormatLegacyLongitude(values.WaterLongitudinalKnots))},{FirstLegacyCharacter(FormatLegacyLatitude(values.WaterLateralKnots))},A,{FirstLegacyCharacter(FormatLegacyLongitude(values.LongitudinalKnots))},{FirstLegacyCharacter(FormatLegacyLatitude(values.LateralKnots))},A");
+            $"GPVBW,{values.WaterLongitudinalKnots:0.0},{values.WaterLateralKnots:0.0},A,{values.LongitudinalKnots:0.0},{values.LateralKnots:0.0},A");
         return Full(body);
     }
 
@@ -293,7 +293,7 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
         Ps2404aVbwValues values = CalculatePs2404aVbwValues(data);
         return Full(string.Create(
             Invariant,
-            $"VDVBW,{FormatLegacyLongitude(values.WaterLongitudinalKnots)},{FormatLegacyLatitude(values.WaterLateralKnots)},A,{FormatLegacyLongitude(values.LongitudinalKnots)},{FormatLegacyLatitude(values.LateralKnots)},A,{values.SternWaterSpeedKnots:0.0},A ,{values.SternGroundSpeedKnots:0.0},A"));
+            $"VDVBW,{values.WaterLongitudinalKnots:0.0},{values.WaterLateralKnots:0.0},A,{values.LongitudinalKnots:0.0},{values.LateralKnots:0.0},A,{values.SternWaterSpeedKnots:0.0},A,{values.SternGroundSpeedKnots:0.0},A"));
     }
 
     private static IReadOnlyList<string> BuildPs2404aTtm(NmeaDataDto data)
@@ -568,11 +568,6 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
 
         int digitWidth = Math.Max(1, width - 1);
         return "-" + Math.Abs(value).ToString(new string('0', digitWidth), Invariant);
-    }
-
-    private static char FirstLegacyCharacter(string value)
-    {
-        return string.IsNullOrEmpty(value) ? '0' : value[0];
     }
 
     private sealed record Ps2404aVbwValues(
