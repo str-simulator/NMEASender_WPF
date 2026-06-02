@@ -93,6 +93,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0"
@@ -112,7 +113,28 @@
                                              IsChecked="{Binding IsMulticastMode, Mode=TwoWay}" />
                             </StackPanel>
 
-                            <Grid Grid.Row="2">
+                            <Grid Grid.Row="2" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock VerticalAlignment="Center"
+                                           FontWeight="SemiBold"
+                                           Foreground="#5C6A85"
+                                           Text="UDP Port" />
+                                <TextBox Grid.Column="1"
+                                         Margin="8,0,8,0"
+                                         Text="{Binding UdpPortText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="2"
+                                        Width="70"
+                                        Command="{Binding ApplyUdpPortToAllCommand}"
+                                        Content="APPLY"
+                                        Style="{StaticResource ToolbarButtonStyle}" />
+                            </Grid>
+
+                            <Grid Grid.Row="3">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="140" />
                                     <ColumnDefinition Width="*" />
@@ -128,7 +150,7 @@
                                          Text="{Binding MulticastAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </Grid>
 
-                            <TextBlock Grid.Row="3"
+                            <TextBlock Grid.Row="4"
                                        Margin="0,8,0,0"
                                        Foreground="#6E7A90"
                                        Text="Multicast address must be an IPv4 address in the range 224.0.0.0 - 239.255.255.255." />
@@ -154,21 +176,16 @@
                                        Text="Sentence UDP Endpoint" />
 
                             <Grid Grid.Row="1" Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0"
+                                <TextBox Padding="26,0,8,0"
                                          Text="{Binding SentenceUdpSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          ToolTip="Search sentence endpoint" />
-                                <Button Grid.Column="1"
-                                        Width="28"
-                                        MinWidth="28"
-                                        Margin="6,0,0,0"
-                                        Padding="0"
-                                        Command="{Binding ClearSentenceUdpSearchCommand}"
-                                        Content="x"
-                                        Visibility="{Binding HasSentenceUdpSearchText, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="12"
+                                           Foreground="#7B879B"
+                                           IsHitTestVisible="False"
+                                           Text="&#xE721;" />
                             </Grid>
 
                             <ItemsControl Grid.Row="2" ItemsSource="{Binding FilteredSentenceUdpPorts}">

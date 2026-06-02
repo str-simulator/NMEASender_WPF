@@ -21,7 +21,6 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
         StopCommand = new RelayCommand(_workflow.Stop, CanStop);
         RefreshPortsCommand = new RelayCommand(_workflow.RefreshPorts);
         ApplyDefaultPortCommand = new RelayCommand(_workflow.ApplyDefaultPort);
-        ApplyDefaultUdpPortCommand = new RelayCommand(_workflow.ApplyDefaultUdpPort);
         ClearSentenceSearchCommand = new RelayCommand(ClearSentenceSearch);
         OpenSettingsCommand = new RelayCommand(_workflow.OpenSettings);
         ExitCommand = new RelayCommand(_workflow.Exit);
@@ -57,12 +56,6 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
         set => _state.UseTrueWind = value;
     }
 
-    public string UdpPortText
-    {
-        get => _state.UdpPortText;
-        set => _state.UdpPortText = value;
-    }
-
     public string SentenceSearchText
     {
         get => _state.SentenceSearchText;
@@ -78,8 +71,6 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
     public IRelayCommand RefreshPortsCommand { get; }
 
     public IRelayCommand ApplyDefaultPortCommand { get; }
-
-    public IRelayCommand ApplyDefaultUdpPortCommand { get; }
 
     public IRelayCommand ClearSentenceSearchCommand { get; }
 

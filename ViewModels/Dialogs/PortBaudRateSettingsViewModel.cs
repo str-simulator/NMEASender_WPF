@@ -6,6 +6,7 @@ using NMEASender.Wpf.Services.Interfaces.Search;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 
@@ -38,6 +39,9 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
     private string _multicastAddress = "225.0.0.0";
 
     [ObservableProperty]
+    private string _udpPortText = "40014";
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSentenceUdpSearchText))]
     private string _sentenceUdpSearchText = string.Empty;
 
@@ -46,13 +50,15 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         IReadOnlyDictionary<string, int> portBaudRates,
         IReadOnlyList<int>? baudRateOptions = null,
         IReadOnlyList<SentenceUdpPortSetting>? sentenceUdpPortSettings = null,
+        int currentUdpPort = 40014,
         UdpTransportOptions? udpTransportOptions = null,
         bool supportsPerSentenceMulticastAddress = false)
     {
         _sentenceSearchService = sentenceSearchService ?? throw new ArgumentNullException(nameof(sentenceSearchService));
         _supportsPerSentenceMulticastAddress = supportsPerSentenceMulticastAddress;
+        int normalizedUdpPort = NormalizeUdpPort(currentUdpPort);
         UdpTransportOptions effectiveUdpOptions = (udpTransportOptions ?? UdpTransportOptions.CreateDefault())
-            .WithFallbackPort(40014);
+            .WithFallbackPort(normalizedUdpPort);
         _broadcastPort = effectiveUdpOptions.BroadcastPort;
         _multicastPortNo = effectiveUdpOptions.MulticastPortNo;
         _multicastSendPort = effectiveUdpOptions.MulticastSendPort;
@@ -60,6 +66,7 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         _defaultMulticastAddress = effectiveUdpOptions.MulticastAddress;
         _multicastInterfaceAddress = effectiveUdpOptions.MulticastInterfaceAddress;
         _useRequestedPort = effectiveUdpOptions.UseRequestedPort;
+        UdpPortText = normalizedUdpPort.ToString(CultureInfo.InvariantCulture);
 
         BaudRateOptions = (baudRateOptions is { Count: > 0 } ? baudRateOptions : DefaultBaudRates)
             .Distinct()
@@ -103,6 +110,8 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
     public IReadOnlyDictionary<string, int> SentenceUdpPortResult { get; private set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyDictionary<string, string> SentenceUdpAddressResult { get; private set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    public int UdpPortResult { get; private set; } = 40014;
 
     public UdpTransportOptions UdpTransportResult { get; private set; } = UdpTransportOptions.CreateDefault(40014);
 
@@ -148,6 +157,15 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         RefreshSentenceUdpFilter();
     }
 
+    partial void OnUdpPortTextChanged(string value)
+    {
+        string trimmed = (value ?? string.Empty).Trim();
+        if (!string.Equals(value, trimmed, StringComparison.Ordinal))
+        {
+            UdpPortText = trimmed;
+        }
+    }
+
     partial void OnSelectedUdpModeChanged(UdpTransportMode value)
     {
         if (value == UdpTransportMode.Multicast)
@@ -160,6 +178,11 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
     private void Save()
     {
         Dictionary<string, int> baudRateResult = new(StringComparer.OrdinalIgnoreCase);
+        if (!TryParseUdpPort(UdpPortText, out int udpPort))
+        {
+            ValidationMessage = "UDP port must be between 1 and 65535.";
+            return;
+        }
 
         foreach (PortBaudRateItem item in PortBaudRates)
         {
@@ -241,12 +264,13 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
             resolvedMulticastAddress,
             _multicastTtl,
             _multicastInterfaceAddress,
-            _useRequestedPort).WithFallbackPort(_broadcastPort);
+            _useRequestedPort).WithFallbackPort(udpPort);
 
         ValidationMessage = string.Empty;
         Result = baudRateResult;
         SentenceUdpPortResult = udpPortResult;
         SentenceUdpAddressResult = udpAddressResult;
+        UdpPortResult = udpPort;
         CloseRequested?.Invoke(this, true);
     }
 
@@ -262,10 +286,38 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         SentenceUdpSearchText = string.Empty;
     }
 
+    [RelayCommand]
+    private void ApplyUdpPortToAll()
+    {
+        if (!TryParseUdpPort(UdpPortText, out int udpPort))
+        {
+            ValidationMessage = "UDP port must be between 1 and 65535.";
+            return;
+        }
+
+        foreach (SentenceUdpPortItem row in SentenceUdpPorts)
+        {
+            row.UdpPort = udpPort;
+        }
+
+        ValidationMessage = string.Empty;
+    }
+
     private static bool IsMulticastAddress(IPAddress address)
     {
         byte[] bytes = address.GetAddressBytes();
         return bytes.Length == 4 && bytes[0] is >= 224 and <= 239;
+    }
+
+    private static bool TryParseUdpPort(string value, out int port)
+    {
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out port) &&
+               port is >= 1 and <= 65535;
+    }
+
+    private static int NormalizeUdpPort(int port)
+    {
+        return port is >= 1 and <= 65535 ? port : 40014;
     }
 
     private static bool TryNormalizeMulticastAddress(string? value, out string normalizedAddress)
