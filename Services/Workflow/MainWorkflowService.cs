@@ -197,20 +197,22 @@ public sealed class MainWorkflowService : IMainWorkflowService
         RefreshPorts();
         IReadOnlyDictionary<string, int> currentPortBaudRates = GetPortBaudRatesSnapshot();
         IReadOnlyList<SentenceUdpPortSetting> currentSentenceUdpPorts = GetSentenceUdpPortSettingsSnapshot();
-        int udpFallbackPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
+        int currentUdpPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
             ? parsedUdpPort
             : NormalizeUdpPort(_config.UdpPort);
-        UdpTransportOptions currentUdpTransportOptions = _config.UdpTransportOptions.WithFallbackPort(udpFallbackPort);
+        UdpTransportOptions currentUdpTransportOptions = _config.UdpTransportOptions.WithFallbackPort(currentUdpPort);
 
         if (!_portBaudRateSettingsDialogService.TryShow(
                 currentPortBaudRates,
                 BaudRateOptions,
                 currentSentenceUdpPorts,
+                currentUdpPort,
                 currentUdpTransportOptions,
                 _projectSentenceFrameService.SupportsPerSentenceMulticastAddress(_config.ProjectType),
                 out IReadOnlyDictionary<string, int> updatedPortBaudRates,
                 out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts,
                 out IReadOnlyDictionary<string, string> updatedSentenceUdpAddresses,
+                out int updatedUdpPort,
                 out UdpTransportOptions updatedUdpTransportOptions))
         {
             return;
@@ -240,6 +242,10 @@ public sealed class MainWorkflowService : IMainWorkflowService
             AddLog($"Sentence UDP setting failed: {udpError}");
             return;
         }
+
+        int normalizedUdpPort = NormalizeUdpPort(updatedUdpPort);
+        State.UdpPortText = normalizedUdpPort.ToString(CultureInfo.InvariantCulture);
+        _config.UdpPort = normalizedUdpPort;
 
         _config.UdpTransportOptions = normalizedUdpTransportOptions;
         SaveConfig();

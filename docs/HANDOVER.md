@@ -13,9 +13,13 @@
 - COM 포트별 BaudRate 설정
 - Sentence별 UDP 포트 설정
 - Sentence별 Multicast 주소 설정
+- 상단 툴바 Sentence 검색(문장명/ID/NMEA #1/NMEA #2)
+- Settings > Sentence UDP Endpoint 검색 + x 일괄 클리어
 - 프로젝트별 NMEA 생성 규칙 분리
 - PS2404A 전용 NMEADrv 호환 로직 지원
 - 로그 자동 스크롤 및 수동 스크롤 제어
+
+운영/사용 절차는 `docs/OPERATION_MANUAL.md`를 참고하면 된다.
 
 ## 2. 먼저 봐야 하는 파일 순서
 
@@ -64,6 +68,7 @@ NMEASender.Wpf
 │  ├─ IO
 │  ├─ Network
 │  ├─ Ports
+│  ├─ Search
 │  ├─ Mapping
 │  └─ Application
 └─ Styles
@@ -77,6 +82,7 @@ NMEASender.Wpf
 - `Services`: 실제 업무 로직
 - `Services/Interfaces`: 서비스 추상화
 - `Services/Projects`: 프로젝트별 차이점
+- `Services/Search`: 검색 규칙 공통 서비스
 - `Styles`: WPF 스타일
 
 ## 4. DI 등록 구조
@@ -103,6 +109,9 @@ NMEASender.Wpf
 - Workflow
   - `IMainWorkflowService`
   - `MainWorkflowService`
+- Search
+  - `ISentenceSearchService`
+  - `SentenceSearchService`
 - ViewModel / View
   - `MainViewModel`
   - `MainWindow`
@@ -154,6 +163,7 @@ NMEASender.Wpf
   - START
   - STOP
   - APPLY
+  - Sentence 검색어 입력/클리어
   - Settings
   - Exit
 - `ManualLogViewModel`
@@ -165,8 +175,35 @@ NMEASender.Wpf
   - Sentence 추가
   - Sentence 삭제
   - 전체 COM/UDP 체크
+  - `CollectionView` 필터 기반 검색 결과 표시
 
 복잡한 로직은 ViewModel 안에 직접 넣지 말고 `MainWorkflowService`로 넘기는 구조다.
+
+### 5.5 Sentence 검색 구조
+
+검색 기능은 ViewModel에 문자열 매칭 로직을 직접 두지 않고 서비스로 분리했다.
+
+관련 클래스:
+
+- `Services/Interfaces/Search/ISentenceSearchService.cs`
+- `Services/Search/SentenceSearchService.cs`
+- `ViewModels/Panels/TopToolbarViewModel.cs`
+- `ViewModels/Panels/SentencePanelViewModel.cs`
+- `ViewModels/Dialogs/PortBaudRateSettingsViewModel.cs`
+- `Services/Ports/BaudRateSettingService.cs`
+
+메인 화면 검색:
+
+- 검색어 상태: `MainStateStore.SentenceSearchText`
+- 입력 UI: `TopToolbarView`
+- 필터 적용: `SentencePanelViewModel`의 `GpsSentencesView` / `OtherSentencesView`
+- 검색 대상: `Label`, `Id`, `PrimaryText`, `SecondaryText`
+
+Settings 검색:
+
+- 검색어 상태: `PortBaudRateSettingsViewModel.SentenceUdpSearchText`
+- 대상 리스트: `FilteredSentenceUdpPorts`
+- 검색 대상: `RowKey`, `SentenceLabel`, `UdpPort`, `UdpAddress`
 
 ## 6. 핵심 Workflow
 
@@ -623,6 +660,17 @@ ViewModel은 화면 바인딩과 Command 중심으로 유지한다.
 5. `BaseProjectSentenceFramePolicy.ResolveUdpAddress()` 확인
 6. `UdpService` 송신 로그 확인
 
+### 13.5 검색 결과가 이상할 때
+
+확인 순서:
+
+1. 메인 검색어: `MainStateStore.SentenceSearchText`
+2. 메인 필터 적용 여부: `SentencePanelViewModel.FilterSentence()`
+3. 본문 미리보기 최신화 여부: `SentenceItem.PrimaryText`, `SentenceItem.SecondaryText`
+4. 설정 검색어: `PortBaudRateSettingsViewModel.SentenceUdpSearchText`
+5. 설정 필터 리스트: `FilteredSentenceUdpPorts`
+6. 공통 검색 규칙: `SentenceSearchService`
+
 ## 14. 빌드와 확인
 
 일반 빌드:
@@ -646,6 +694,8 @@ dotnet build /p:UseAppHost=false
 5. COM 송신 가능
 6. PS2404A에서 `1$`, `2$` 프레임 확장 확인
 7. PS2404A RPM PORT/STBD 교대 확인
+8. 상단 Sentence 검색 시 GPS/Other 리스트 필터 정상 동작
+9. Settings > Sentence UDP Endpoint 검색/클리어 정상 동작
 
 ## 15. 클래스 다이어그램
 

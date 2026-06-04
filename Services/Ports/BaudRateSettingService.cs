@@ -21,11 +21,13 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
         IReadOnlyDictionary<string, int> currentPortBaudRates,
         IReadOnlyList<int> baudRateOptions,
         IReadOnlyList<SentenceUdpPortSetting> currentSentenceUdpPorts,
+        int currentUdpPort,
         UdpTransportOptions currentUdpTransportOptions,
         bool supportsPerSentenceMulticastAddress,
         out IReadOnlyDictionary<string, int> updatedPortBaudRates,
         out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts,
         out IReadOnlyDictionary<string, string> updatedSentenceUdpAddresses,
+        out int updatedUdpPort,
         out UdpTransportOptions updatedUdpTransportOptions)
     {
         PortBaudRateSettingsViewModel viewModel = new(
@@ -33,6 +35,7 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
             currentPortBaudRates,
             baudRateOptions,
             currentSentenceUdpPorts,
+            currentUdpPort,
             currentUdpTransportOptions,
             supportsPerSentenceMulticastAddress);
         PortBaudRateSettingsWindow window = new(viewModel);
@@ -48,6 +51,7 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
             updatedPortBaudRates = viewModel.Result;
             updatedSentenceUdpPorts = viewModel.SentenceUdpPortResult;
             updatedSentenceUdpAddresses = viewModel.SentenceUdpAddressResult;
+            updatedUdpPort = viewModel.UdpPortResult;
             updatedUdpTransportOptions = viewModel.UdpTransportResult;
             return true;
         }
@@ -61,6 +65,7 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
             item => item.RowKey,
             item => (item.UdpAddress ?? string.Empty).Trim(),
             StringComparer.OrdinalIgnoreCase);
+        updatedUdpPort = currentUdpPort;
         updatedUdpTransportOptions = currentUdpTransportOptions;
         return false;
     }

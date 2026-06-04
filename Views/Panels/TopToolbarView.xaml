@@ -17,8 +17,8 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
@@ -75,32 +75,21 @@
             </StackPanel>
 
             <StackPanel Grid.Column="7"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal">
-                <TextBlock Style="{StaticResource ToolbarLabelTextStyle}" Text="UDP" />
-                <TextBox Width="78"
-                         Margin="8,0,0,0"
-                         Text="{Binding UdpPortText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Margin="8,0,0,0"
-                        Command="{Binding ApplyDefaultUdpPortCommand}"
-                        Content="APPLY"
-                        Style="{StaticResource ToolbarButtonStyle}" />
-            </StackPanel>
-
-            <StackPanel Grid.Column="9"
                         Margin="0,0,8,0"
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
-                <TextBox Width="210"
-                         Text="{Binding SentenceSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="Search sentence" />
-                <Button Width="28"
-                        MinWidth="28"
-                        Margin="6,0,0,0"
-                        Padding="0"
-                        Command="{Binding ClearSentenceSearchCommand}"
-                        Content="x"
-                        Visibility="{Binding HasSentenceSearchText, Converter={StaticResource BoolToVisibility}}" />
+                <Grid Width="400">
+                    <TextBox Padding="26,0,8,0"
+                             Text="{Binding SentenceSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Search sentence" />
+                    <TextBlock Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="12"
+                               Foreground="#7B879B"
+                               IsHitTestVisible="False"
+                               Text="&#xE721;" />
+                </Grid>
             </StackPanel>
 
             <Button Grid.Column="10"
