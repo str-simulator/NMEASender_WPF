@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Ship Signal Icon</title>
+  <desc>Transparent SVG icon showing a ship emitting signal waves.</desc>
+
+  <defs>
+    <linearGradient id="shipGrad" x1="250" y1="260" x2="690" y2="780" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#063B85"/>
+      <stop offset="1" stop-color="#021E4B"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="180" y1="730" x2="850" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A6DFF"/>
+      <stop offset="1" stop-color="#18C8E8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Signal waves -->
+  <path d="M685 330 C765 405 765 555 685 630"
+        stroke="url(#cyanGrad)" stroke-width="48" stroke-linecap="round"/>
+  <path d="M775 250 C900 370 900 590 775 710"
+        stroke="url(#cyanGrad)" stroke-width="48" stroke-linecap="round"/>
+  <path d="M605 405 C650 450 650 510 605 555"
+        stroke="url(#cyanGrad)" stroke-width="48" stroke-linecap="round"/>
+
+  <!-- Ship top -->
+  <rect x="384" y="188" width="96" height="94" rx="16" fill="url(#shipGrad)"/>
+  <rect x="330" y="278" width="205" height="72" rx="14" fill="#13AEEB"/>
+  <rect x="250" y="342" width="365" height="70" rx="12" fill="url(#shipGrad)"/>
+
+  <!-- Bridge windows -->
+  <path d="M303 450 H383 L370 510 H288 Z" fill="url(#shipGrad)"/>
+  <path d="M407 450 H497 L510 510 H394 Z" fill="url(#shipGrad)"/>
+  <path d="M520 450 H600 L615 510 H535 Z" fill="url(#shipGrad)"/>
+
+  <!-- Hull white highlight -->
+  <path d="M160 620 L432 480 L706 620"
+        stroke="white" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Hull -->
+  <path d="M170 623 L432 497 L695 623 L630 820
+           C586 870 507 878 432 806
+           C357 878 278 870 235 820 Z"
+        fill="url(#shipGrad)"/>
+
+  <!-- Hull center cut -->
+  <path d="M432 497 V806"
+        stroke="#0B4B9E" stroke-width="10" stroke-linecap="round" opacity="0.65"/>
+
+  <!-- Front edge highlight -->
+  <path d="M170 623 L432 497 L695 623"
+        stroke="#F7FBFF" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Waves -->
+  <path d="M150 855 C205 815 260 815 315 855
+           C370 895 425 895 480 855
+           C535 815 590 815 645 855
+           C700 895 755 895 810 855"
+        stroke="url(#cyanGrad)" stroke-width="46" stroke-linecap="round"/>
+</svg>
