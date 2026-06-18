@@ -556,7 +556,7 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
         int degrees = (int)value;
         double minutes = (value - degrees) * 60.0;
         string degreeText = FormatLegacyInteger(degrees, degreeDigits);
-        return $"{degreeText}{minutes.ToString("0.00000", Invariant)}";
+        return $"{degreeText}{minutes.ToString("00.00000", Invariant)}";
     }
 
     private static string FormatLegacyInteger(int value, int width)
