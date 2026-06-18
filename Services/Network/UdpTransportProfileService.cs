@@ -1,8 +1,8 @@
-﻿using NMEASender.Wpf.Models.Network;
+﻿using NMEASender.Wpf.Exceptions;
+using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Services.Interfaces.Network;
 using NMEASender.Wpf.Services.Interfaces.Projects;
-using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Network;
 
@@ -13,10 +13,7 @@ public sealed class UdpTransportProfileService : IUdpTransportProfileService
 
     public UdpTransportProfileService(IEnumerable<IProjectUdpTransportProfileStore> projectStores)
     {
-        if (projectStores is null)
-        {
-            throw new ArgumentNullException(nameof(projectStores));
-        }
+        ArgumentNullException.ThrowIfNull(projectStores);
 
         List<IProjectUdpTransportProfileStore> stores = projectStores.ToList();
         if (stores.Count == 0)
