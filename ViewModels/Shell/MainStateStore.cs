@@ -56,7 +56,7 @@ public sealed partial class MainStateStore : ObservableObject
 
     public ObservableCollection<string> Ports { get; } = new();
 
-    public ObservableCollection<string> Logs { get; } = new();
+    public BulkObservableCollection<string> Logs { get; } = new();
 
     public ObservableCollection<SentenceItem> GpsSentences { get; } = new();
 
