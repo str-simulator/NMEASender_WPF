@@ -31,3 +31,27 @@ public sealed class UdpSendException : NetworkException
     {
     }
 }
+
+public sealed class InvalidMulticastAddressException : NetworkException
+{
+    public InvalidMulticastAddressException()
+        : base("Multicast address must be a valid IPv4 address.")
+    {
+    }
+}
+
+public sealed class MulticastAddressRangeException : NetworkException
+{
+    public MulticastAddressRangeException()
+        : base("Multicast address must be in 224.0.0.0 - 239.255.255.255.")
+    {
+    }
+}
+
+public sealed class InvalidUdpPortException : NetworkException
+{
+    public InvalidUdpPortException()
+        : base("UDP port must be between 1 and 65535.")
+    {
+    }
+}

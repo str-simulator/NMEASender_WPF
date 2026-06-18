@@ -105,7 +105,7 @@ public sealed class OutputChannelService : IOutputChannelService
         string normalizedPort = NormalizePortName(portName);
         if (string.IsNullOrWhiteSpace(normalizedPort))
         {
-            error = "COM port is not selected.";
+            error = new SerialPortNotSelectedException().Message;
             return false;
         }
 
@@ -132,7 +132,7 @@ public sealed class OutputChannelService : IOutputChannelService
         string normalizedPort = NormalizePortName(portName);
         if (!_openPorts.Contains(normalizedPort))
         {
-            error = "COM port is not open.";
+            error = new SerialPortNotOpenException().Message;
             return false;
         }
 

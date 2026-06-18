@@ -41,3 +41,19 @@ public sealed class SerialPortWriteException : PortsException
         return string.IsNullOrWhiteSpace(portName) ? "<unknown>" : portName.Trim();
     }
 }
+
+public sealed class SerialPortNotSelectedException : PortsException
+{
+    public SerialPortNotSelectedException()
+        : base("COM port is not selected.")
+    {
+    }
+}
+
+public sealed class SerialPortNotOpenException : PortsException
+{
+    public SerialPortNotOpenException()
+        : base("COM port is not open.")
+    {
+    }
+}

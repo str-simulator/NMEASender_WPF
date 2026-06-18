@@ -60,7 +60,7 @@ public sealed class SharedMemoryProviderService : ISharedMemoryProviderService
             data.TrafficShips = ReadTrafficShips(trafficCount, data.CurrentSet, data.CurrentDrift);
             if (data.IsFinished)
             {
-                error = "IOS simulation is finished.";
+                error = new IosSimulationFinishedException().Message;
                 return false;
             }
 
