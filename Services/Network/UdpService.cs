@@ -1,6 +1,7 @@
 ﻿using NMEASender.Wpf.Exceptions;
 using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Services.Interfaces.Network;
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -104,9 +105,16 @@ public sealed class UdpService : IUdpService
                 throw new UdpSendException($"Invalid UDP address: {targetAddress}");
             }
 
-            byte[] bytes = Encoding.ASCII.GetBytes(sentence);
-            IPEndPoint endPoint = new(address, targetPort);
-            _client.Send(bytes, bytes.Length, endPoint);
+            byte[] bytes = ArrayPool<byte>.Shared.Rent(sentence.Length);
+            try
+            {
+                int count = Encoding.ASCII.GetBytes(sentence, 0, sentence.Length, bytes, 0);
+                _client.Send(bytes, count, new IPEndPoint(address, targetPort));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(bytes);
+            }
             return true;
         }
         catch (NetworkException ex)

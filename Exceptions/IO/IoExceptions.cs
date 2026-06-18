@@ -72,3 +72,11 @@ public sealed class SharedMemoryReadException : SharedMemoryException
     {
     }
 }
+
+public sealed class IosSimulationFinishedException : IoException
+{
+    public IosSimulationFinishedException()
+        : base("IOS simulation is finished.")
+    {
+    }
+}

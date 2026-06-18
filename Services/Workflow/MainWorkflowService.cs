@@ -1,4 +1,5 @@
-﻿using NMEASender.Wpf.Models.Core;
+﻿using NMEASender.Wpf.Exceptions;
+using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Application;
@@ -17,7 +18,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Threading;
-using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Workflow;
 
@@ -392,7 +392,9 @@ public sealed class MainWorkflowService : IMainWorkflowService
             defaultUdpPort,
             udpTransportOptions);
 
-        _nmeaTransmissionService.DispatchTick(tickContext, AddLog, Stop);
+        List<string> tickLogs = new();
+        _nmeaTransmissionService.DispatchTick(tickContext, tickLogs.Add, Stop);
+        State.Logs.AddRange(tickLogs, maxCount: 1000);
     }
 
     private void SyncUdpOutputStateDuringRun()
@@ -791,7 +793,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
 
             if (udpPort is < 1 or > 65535)
             {
-                error = $"{rowKey} UDP port must be between 1 and 65535.";
+                error = new InvalidUdpPortException().Message;
                 return false;
             }
 
@@ -810,7 +812,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
             {
                 if (!TryNormalizeMulticastAddress(candidateAddress, out string normalizedAddress))
                 {
-                    error = $"{rowKey} multicast address must be in 224.0.0.0 - 239.255.255.255.";
+                    error = new MulticastAddressRangeException().Message;
                     return false;
                 }
 
@@ -858,13 +860,13 @@ public sealed class MainWorkflowService : IMainWorkflowService
             if (!IPAddress.TryParse(multicastAddress, out IPAddress? address) ||
                 address.AddressFamily != AddressFamily.InterNetwork)
             {
-                error = "Multicast address must be a valid IPv4 address.";
+                error = new InvalidMulticastAddressException().Message;
                 return false;
             }
 
             if (!IsMulticastAddress(address))
             {
-                error = "Multicast address must be in 224.0.0.0 - 239.255.255.255.";
+                error = new MulticastAddressRangeException().Message;
                 return false;
             }
         }
@@ -955,7 +957,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
             return true;
         }
 
-        error = "UDP port must be between 1 and 65535.";
+        error = new InvalidUdpPortException().Message;
         return false;
     }
 
