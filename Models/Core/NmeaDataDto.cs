@@ -38,9 +38,9 @@ public sealed class NmeaDataDto
     public double HeightTide { get; set; } = 0.0;
     public double DatumOffsetLatitude { get; set; } = 0.0;
     public double DatumOffsetLongitude { get; set; } = 0.0;
-    public int KoseMode { get; set; } = 0;
-    public double KoseSogKnots { get; set; } = 0.0;
-    public double KoseCog { get; set; } = 0.0;
+    public int KsoeMode { get; set; } = 0;
+    public double KsoeSogKnots { get; set; } = 0.0;
+    public double KsoeCog { get; set; } = 0.0;
     public double ThrustCommandBow { get; set; } = 0.0;
     public double ThrustCommandStern { get; set; } = 0.0;
     public double ThrusterThrustBow { get; set; } = 0.0;

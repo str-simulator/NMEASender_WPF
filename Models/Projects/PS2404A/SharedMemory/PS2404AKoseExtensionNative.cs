@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace NMEASender.Wpf.Models.Projects.PS2404A.SharedMemory;
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-internal struct PS2404AKoseExtensionNative
+internal struct PS2404AKsoeExtensionNative
 {
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)] public double[] m_PitchTransv;
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)] public int[] m_bDieselStart;
@@ -57,11 +57,11 @@ internal struct PS2404AKoseExtensionNative
     public double dServerWaterDepth;
     public byte bCheckDepthEdit;
     public byte bDepthInstructor;
-    public double m_dKOSESOG;
-    public double m_dKOSECOG;
-    public int m_nKOSEMode;
+    public double m_dKSOESOG;
+    public double m_dKSOECOG;
+    public int m_nKSOEMode;
 
-    public double KoseSogKnots => m_dKOSESOG;
-    public double KoseCog => m_dKOSECOG;
-    public int KoseMode => m_nKOSEMode;
+    public double KsoeSogKnots => m_dKSOESOG;
+    public double KsoeCog => m_dKSOECOG;
+    public int KsoeMode => m_nKSOEMode;
 }

@@ -14,32 +14,32 @@ public sealed class PS2404ASharedMemoryExtensionReader : IProjectSharedMemoryExt
 
     public void Apply(MemoryMappedViewAccessor view, long ownShipBaseSize, NmeaDataDto data)
     {
-        if (!TryReadKoseExtension(view, ownShipBaseSize, out PS2404AKoseExtensionNative extension))
+        if (!TryReadKsoeExtension(view, ownShipBaseSize, out PS2404AKsoeExtensionNative extension))
         {
             return;
         }
 
-        data.KoseMode = extension.KoseMode;
-        data.KoseSogKnots = SafeDouble(extension.KoseSogKnots);
-        data.KoseCog = NormalizeDegrees(SafeDouble(extension.KoseCog));
+        data.KsoeMode = extension.KsoeMode;
+        data.KsoeSogKnots = SafeDouble(extension.KsoeSogKnots);
+        data.KsoeCog = NormalizeDegrees(SafeDouble(extension.KsoeCog));
     }
 
-    private static bool TryReadKoseExtension(
+    private static bool TryReadKsoeExtension(
         MemoryMappedViewAccessor view,
         long offset,
-        out PS2404AKoseExtensionNative extension)
+        out PS2404AKsoeExtensionNative extension)
     {
         extension = default;
-        int size = Marshal.SizeOf<PS2404AKoseExtensionNative>();
+        int size = Marshal.SizeOf<PS2404AKsoeExtensionNative>();
         if (view.Capacity < offset + size)
         {
             return false;
         }
 
-        extension = ReadStruct<PS2404AKoseExtensionNative>(view, offset);
-        return extension.KoseMode is >= 0 and <= PS2404AKoseModes.EngineAndRudder
-               && double.IsFinite(extension.KoseSogKnots)
-               && double.IsFinite(extension.KoseCog);
+        extension = ReadStruct<PS2404AKsoeExtensionNative>(view, offset);
+        return extension.KsoeMode is >= 0 and <= PS2404AKsoeModes.EngineAndRudder
+               && double.IsFinite(extension.KsoeSogKnots)
+               && double.IsFinite(extension.KsoeCog);
     }
 
     private static T ReadStruct<T>(MemoryMappedViewAccessor view, long offset) where T : struct

@@ -121,9 +121,9 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
         DateTime utcNow = DateTime.UtcNow;
         (string Value, char Hemisphere) lat = FormatPs2404aLatitude(data.OwnLatitude);
         (string Value, char Hemisphere) lon = FormatPs2404aLongitude(data.OwnLongitude);
-        bool useKose = IsKoseEngineRudderMode(data);
-        double sog = useKose ? data.KoseSogKnots : CalculatePs2404aSpeedOverGroundKnots(data);
-        double cog = useKose ? data.KoseCog : CalculatePs2404aCourseOverGround(data);
+        bool useKsoe = IsKsoeEngineRudderMode(data);
+        double sog = useKsoe ? data.KsoeSogKnots : CalculatePs2404aSpeedOverGroundKnots(data);
+        double cog = useKsoe ? data.KsoeCog : CalculatePs2404aCourseOverGround(data);
         string body = string.Create(
             Invariant,
             $"GPRMC,{TimeOfDay(utcNow, true)},A,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},{sog:0.000},{cog:00.00},{utcNow:ddMMyy},{data.MagneticVariation:0.00},{lon.Hemisphere},M");
@@ -132,10 +132,10 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
 
     private static string BuildPs2404aVtg(NmeaDataDto data, NmeaDerivedData derived)
     {
-        bool useKose = IsKoseEngineRudderMode(data);
-        double trueCourse = useKose ? data.KoseCog : CalculatePs2404aCourseOverGround(data);
-        double magneticCourse = useKose ? trueCourse : trueCourse + data.MagneticVariation;
-        double speedKnots = useKose ? data.KoseSogKnots : CalculatePs2404aSpeedOverGroundKnots(data);
+        bool useKsoe = IsKsoeEngineRudderMode(data);
+        double trueCourse = useKsoe ? data.KsoeCog : CalculatePs2404aCourseOverGround(data);
+        double magneticCourse = useKsoe ? trueCourse : trueCourse + data.MagneticVariation;
+        double speedKnots = useKsoe ? data.KsoeSogKnots : CalculatePs2404aSpeedOverGroundKnots(data);
         double speedKmh = speedKnots * 1.852;
 
         string body = string.Create(
@@ -218,17 +218,17 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
     private static string BuildPs2404aVhw(NmeaDataDto data, NmeaDerivedData derived)
     {
         double magneticHeading = NormalizeDegrees(data.GyroHeading + data.MagneticVariation);
-        bool useKose = IsKoseEngineRudderMode(data);
-        double speedKnots = useKose ? data.KoseSogKnots : derived.WaterSpeedKnots;
-        double speedKmh = useKose ? data.KoseSogKnots * 1.852 : derived.WaterSpeedKmh;
+        bool useKsoe = IsKsoeEngineRudderMode(data);
+        double speedKnots = useKsoe ? data.KsoeSogKnots : derived.WaterSpeedKnots;
+        double speedKmh = useKsoe ? data.KsoeSogKnots * 1.852 : derived.WaterSpeedKmh;
         return Full(string.Create(
             Invariant,
             $"VDVHW,{data.GyroHeading:0.0},T,{magneticHeading:0.0},M,{speedKnots:0.0},N,{speedKmh:0.0},K"));
     }
 
-    private static bool IsKoseEngineRudderMode(NmeaDataDto data)
+    private static bool IsKsoeEngineRudderMode(NmeaDataDto data)
     {
-        return data.KoseMode == PS2404AKoseModes.EngineAndRudder;
+        return data.KsoeMode == PS2404AKsoeModes.EngineAndRudder;
     }
 
     private static string BuildPs2404aVdr(NmeaDataDto data)

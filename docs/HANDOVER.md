@@ -408,7 +408,7 @@ PS2404A 전용 차이:
 
 - 좌표 포맷이 다름
 - `GLL`, `VTG` 등에 Mode Indicator가 붙음
-- KOSE 데이터가 있으면 `RMC`, `VTG`, `VHW`에서 KOSE 값 우선 사용
+- KSOE 데이터가 있으면 `RMC`, `VTG`, `VHW`에서 KSOE 값 우선 사용
 - `RPM` 포맷이 다름
 - `DPT` 포맷이 다름
 - `VDVBW`는 별도 계산식 사용

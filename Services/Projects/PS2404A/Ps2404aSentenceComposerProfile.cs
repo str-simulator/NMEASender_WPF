@@ -14,14 +14,14 @@ public sealed class PS2404ASentenceComposerProfile : BaseProjectSentenceComposer
         NmeaBuildOptions options,
         INmeaSentenceBuilderService sentenceBuilder)
     {
-        bool useKose = data.KoseMode == PS2404AKoseModes.EngineAndRudder;
+        bool useKsoe = data.KsoeMode == PS2404AKsoeModes.EngineAndRudder;
         double sogKnots;
         double trueCourse;
         double magneticVariation;
-        if (useKose)
+        if (useKsoe)
         {
-            sogKnots = data.KoseSogKnots;
-            trueCourse = data.KoseCog;
+            sogKnots = data.KsoeSogKnots;
+            trueCourse = data.KsoeCog;
             magneticVariation = 0.0;
         }
         else

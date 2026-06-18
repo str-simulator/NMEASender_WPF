@@ -89,7 +89,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
   - AIS Payload sentence 조립
 - `Services/Projects/PS2404A/Ps2404aNmeaSentenceBuilder.cs`
   - PS2404A 전용 좌표 포맷
-  - PS2404A 전용 `GLL`, `RMC`, `VTG` mode indicator / KOSE 처리
+  - PS2404A 전용 `GLL`, `RMC`, `VTG` mode indicator / KSOE 처리
   - PS2404A 전용 `RPM`, `DPT`
   - PS2404A 전용 `VDVBW`, `VHW`, `VDR`, `DTM`, `GPDTM`, `THS`, `MWS`, `MWH`, `HTD`, `TTM`
 - `Services/Projects/PS2603/Ps2603ProjectServices.cs`
@@ -165,7 +165,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
   - 문장별 Multicast 주소 지원
 - `Ps2404aNmeaSentenceBuilder`
   - PS2404A NMEADrv 기준 문장 생성 규칙 반영
-  - KOSE 기반 RMC/VTG 처리
+  - KSOE 기반 RMC/VTG 처리
   - PS2404A 전용 좌표 포맷 및 Talker ID override 적용
 - `Ps2404aUdpTransportProfileStore`
   - `UDPConfig.ini` 로드/저장
