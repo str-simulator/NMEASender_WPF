@@ -97,10 +97,11 @@
                          MinHeight="260"
                          behaviors:ListBoxAutoFollowBehavior.IsEnabled="True"
                          ItemsSource="{Binding Logs}"
-                         ScrollViewer.CanContentScroll="False"
+                         ScrollViewer.CanContentScroll="True"
                          ScrollViewer.HorizontalScrollBarVisibility="Visible"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
-                         VirtualizingPanel.IsVirtualizing="False" />
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling" />
             </Grid>
         </Grid>
     </Border>

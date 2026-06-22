@@ -23,3 +23,11 @@ public sealed record TransmissionTickContext(
     NmeaBuildOptions BuildOptions,
     int DefaultUdpPort,
     UdpTransportOptions UdpTransportOptions);
+
+public sealed record SentenceSendTask(
+    SentenceItem Item,
+    IReadOnlyList<string> FramedSentences,
+    bool IsComEnabled,
+    bool IsUdpEnabled,
+    int UdpPort,
+    string? UdpAddress);

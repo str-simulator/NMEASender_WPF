@@ -24,6 +24,7 @@ namespace NMEASender.Wpf.Services.Workflow;
 public sealed class MainWorkflowService : IMainWorkflowService
 {
     private readonly DispatcherTimer _timer;
+    private readonly DispatcherTimer _sharedMemoryRetryTimer;
     private readonly IOutputChannelService _outputChannelService;
     private readonly IPortBaudRateService _portBaudRateService;
     private readonly INmeaTransmissionService _nmeaTransmissionService;
@@ -39,6 +40,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
     private bool _sharedMemoryWarningLogged;
     private bool _isSynchronizingAllComSentencesChecked;
     private bool _isSynchronizingAllUdpSentencesChecked;
+    private int _isSending;
     private NmeaDataDto _data = new();
 
     public MainWorkflowService(
@@ -79,6 +81,9 @@ public sealed class MainWorkflowService : IMainWorkflowService
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_config.SendInterval) };
         _timer.Tick += (_, _) => SendTick();
 
+        _sharedMemoryRetryTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _sharedMemoryRetryTimer.Tick += OnSharedMemoryRetryTick;
+
         State.PropertyChanged += State_PropertyChanged;
 
         RefreshPorts();
@@ -105,8 +110,15 @@ public sealed class MainWorkflowService : IMainWorkflowService
         {
             if (!UpdateCurrentData(forceLog: true))
             {
+                if (State.IsIosSource && !_sharedMemoryRetryTimer.IsEnabled)
+                {
+                    AddLog("Waiting for SharedMemory... (will start automatically when connected)");
+                    _sharedMemoryRetryTimer.Start();
+                }
                 return;
             }
+
+            _sharedMemoryRetryTimer.Stop();
 
             bool hasEnabledUdpSentence = HasEnabledUdpSentence();
             int udpPort = NormalizeUdpPort(_config.UdpPort);
@@ -181,6 +193,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
 
     public void Stop()
     {
+        _sharedMemoryRetryTimer.Stop();
         _timer.Stop();
         _nmeaTransmissionService.Stop(State.IsRunning, AddLog);
         State.IsRunning = false;
@@ -368,33 +381,78 @@ public sealed class MainWorkflowService : IMainWorkflowService
         Stop();
     }
 
-    private void SendTick()
+    private async void SendTick()
     {
-        if (!UpdateCurrentData())
+        // Skip this tick if previous send is still in progress.
+        if (Interlocked.CompareExchange(ref _isSending, 1, 0) != 0)
         {
             return;
         }
 
-        List<SentenceItem> enabledSentences = State.AllSentences()
-            .Where(item => item.IsComEnabled || item.IsUdpEnabled)
-            .ToList();
-        int requestedUdpPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
-            ? parsedUdpPort
-            : NormalizeUdpPort(_config.UdpPort);
-        UdpTransportOptions udpTransportOptions = _config.UdpTransportOptions.WithFallbackPort(requestedUdpPort);
-        int defaultUdpPort = udpTransportOptions.ResolveTargetPort(requestedUdpPort);
+        try
+        {
+            if (!UpdateCurrentData())
+            {
+                return;
+            }
 
-        TransmissionTickContext tickContext = new(
-            enabledSentences,
-            _data,
-            State.IsIosSource,
-            CurrentBuildOptions(),
-            defaultUdpPort,
-            udpTransportOptions);
+            List<SentenceItem> enabledSentences = State.AllSentences()
+                .Where(item => item.IsComEnabled || item.IsUdpEnabled)
+                .ToList();
+            int requestedUdpPort = TryParseUdpPort(State.UdpPortText, out int parsedUdpPort)
+                ? parsedUdpPort
+                : NormalizeUdpPort(_config.UdpPort);
+            UdpTransportOptions udpTransportOptions = _config.UdpTransportOptions.WithFallbackPort(requestedUdpPort);
+            int defaultUdpPort = udpTransportOptions.ResolveTargetPort(requestedUdpPort);
 
-        List<string> tickLogs = new();
-        _nmeaTransmissionService.DispatchTick(tickContext, tickLogs.Add, Stop);
-        State.Logs.AddRange(tickLogs, maxCount: 1000);
+            TransmissionTickContext tickContext = new(
+                enabledSentences,
+                _data,
+                State.IsIosSource,
+                CurrentBuildOptions(),
+                defaultUdpPort,
+                udpTransportOptions);
+
+            // Phase 1 (UI thread): compose sentences and update preview texts.
+            List<string> composeLogs = new();
+            IReadOnlyList<SentenceSendTask> sendTasks = _nmeaTransmissionService.ComposeTick(tickContext, composeLogs.Add);
+            State.Logs.AddRange(composeLogs, maxCount: 1000);
+
+            if (sendTasks.Count == 0)
+            {
+                return;
+            }
+
+            // Phase 2 (background thread): perform actual COM/UDP I/O.
+            var dispatcher = System.Windows.Application.Current.Dispatcher;
+            Action uiStop = () => dispatcher.BeginInvoke(Stop);
+            List<string> sendLogs = new();
+            await Task.Run(() => _nmeaTransmissionService.ExecuteSend(sendTasks, sendLogs.Add, uiStop));
+            State.Logs.AddRange(sendLogs, maxCount: 1000);
+        }
+        catch (Exception ex)
+        {
+            AddLog($"Send error: {ex.Message}");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _isSending, 0);
+        }
+    }
+
+    private async void OnSharedMemoryRetryTick(object? sender, EventArgs e)
+    {
+        if (!State.IsIosSource || State.IsRunning || State.IsOpening)
+        {
+            _sharedMemoryRetryTimer.Stop();
+            return;
+        }
+
+        if (_sharedMemoryDataProvider.TryRead(out _, out _))
+        {
+            _sharedMemoryRetryTimer.Stop();
+            await StartAsync();
+        }
     }
 
     private void SyncUdpOutputStateDuringRun()
@@ -570,6 +628,10 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 if (State.IsIosSource && State.IsTestSource)
                 {
                     State.IsTestSource = false;
+                }
+                if (!State.IsIosSource)
+                {
+                    _sharedMemoryRetryTimer.Stop();
                 }
                 break;
 
