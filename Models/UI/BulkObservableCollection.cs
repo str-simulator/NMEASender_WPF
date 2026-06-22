@@ -12,13 +12,25 @@ public sealed class BulkObservableCollection<T> : ObservableCollection<T>
             return;
 
         int excess = Count + items.Count - maxCount;
-        for (int i = 0; i < excess; i++)
-            Items.RemoveAt(0);
+
+        if (excess > 0)
+        {
+            for (int i = 0; i < excess; i++)
+                Items.RemoveAt(0);
+            foreach (T item in items)
+                Items.Add(item);
+            OnPropertyChanged(new PropertyChangedEventArgs("Count"));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            return;
+        }
+
+        int insertStart = Items.Count;
         foreach (T item in items)
             Items.Add(item);
-
         OnPropertyChanged(new PropertyChangedEventArgs("Count"));
         OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        for (int i = 0; i < items.Count; i++)
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, items[i], insertStart + i));
     }
 }

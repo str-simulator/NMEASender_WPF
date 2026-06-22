@@ -195,14 +195,13 @@ public static class ListBoxAutoFollowBehavior
 
         private void ScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
-            bool isAtBottom = IsAtBottom(_scrollViewer);
             if (e.ExtentHeightChange == 0)
             {
-                _followLogTail = isAtBottom;
+                _followLogTail = IsAtBottom(_scrollViewer);
                 return;
             }
 
-            if (_followLogTail && isAtBottom)
+            if (_followLogTail)
             {
                 RequestScrollToLatest();
             }
