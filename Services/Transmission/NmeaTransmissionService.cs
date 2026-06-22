@@ -1,4 +1,4 @@
-﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.IO;
@@ -157,12 +157,14 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
         addLog($"UDP {options.Mode} Open Fail: {udpError}");
     }
 
-    public void DispatchTick(TransmissionTickContext context, Action<string> addLog, Action stopAction)
+    // Runs on UI thread: composes sentences and updates preview texts, returns send plan.
+    public IReadOnlyList<SentenceSendTask> ComposeTick(TransmissionTickContext context, Action<string> addLog)
     {
         IReadOnlyList<SentenceItem> dispatchSentences = _projectSentenceFrameService.SelectForDispatch(
             context.EnabledSentences,
             context.BuildOptions.ProjectType);
 
+        List<SentenceSendTask> tasks = new();
         foreach (SentenceItem item in dispatchSentences)
         {
             if (!_sentenceComposer.ShouldSend(item, context.IsIosSource, context.Data))
@@ -180,31 +182,51 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
                 item.Id,
                 context.BuildOptions.ProjectType);
 
-            if (item.IsComEnabled &&
+            bool isComEnabled = item.IsComEnabled &&
                 !string.IsNullOrWhiteSpace(item.PortName) &&
-                _outputChannelService.IsComPortOpen(item.PortName))
-            {
-                if (!SendToCom(item, framedSentences, addLog, stopAction))
-                {
-                    continue;
-                }
-            }
-            else if (item.IsComEnabled && !_outputChannelService.IsUdpOpen && string.IsNullOrWhiteSpace(item.PortName))
+                _outputChannelService.IsComPortOpen(item.PortName);
+
+            if (item.IsComEnabled && !_outputChannelService.IsUdpOpen && string.IsNullOrWhiteSpace(item.PortName))
             {
                 addLog($"{item.Label} COM not selected");
             }
 
-            if (item.IsUdpEnabled && _outputChannelService.IsUdpOpen)
+            bool isUdpEnabled = item.IsUdpEnabled && _outputChannelService.IsUdpOpen;
+
+            if (!isComEnabled && !isUdpEnabled)
             {
-                int udpPort = _projectSentenceFrameService.ResolveUdpPort(
-                    item,
-                    context.DefaultUdpPort,
-                    context.BuildOptions.ProjectType);
-                string? udpAddress = _projectSentenceFrameService.ResolveUdpAddress(
-                    item,
-                    context.UdpTransportOptions,
-                    context.BuildOptions.ProjectType);
-                SendToUdp(item, framedSentences, udpPort, udpAddress, addLog, stopAction);
+                continue;
+            }
+
+            int udpPort = isUdpEnabled
+                ? _projectSentenceFrameService.ResolveUdpPort(item, context.DefaultUdpPort, context.BuildOptions.ProjectType)
+                : 0;
+            string? udpAddress = isUdpEnabled
+                ? _projectSentenceFrameService.ResolveUdpAddress(item, context.UdpTransportOptions, context.BuildOptions.ProjectType)
+                : null;
+
+            tasks.Add(new SentenceSendTask(item, framedSentences, isComEnabled, isUdpEnabled, udpPort, udpAddress));
+        }
+
+        return tasks;
+    }
+
+    // Runs on background thread: performs actual COM/UDP I/O.
+    public void ExecuteSend(IReadOnlyList<SentenceSendTask> tasks, Action<string> addLog, Action stopAction)
+    {
+        foreach (SentenceSendTask task in tasks)
+        {
+            if (task.IsComEnabled)
+            {
+                if (!SendToCom(task.Item, task.FramedSentences, addLog, stopAction))
+                {
+                    continue;
+                }
+            }
+
+            if (task.IsUdpEnabled)
+            {
+                SendToUdp(task.Item, task.FramedSentences, task.UdpPort, task.UdpAddress, addLog, stopAction);
             }
         }
     }

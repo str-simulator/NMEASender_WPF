@@ -1,4 +1,4 @@
-﻿using NMEASender.Wpf.Models.Core;
+using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Services.Interfaces.IO;
 using NMEASender.Wpf.Services.Interfaces.Network;
@@ -13,6 +13,7 @@ public sealed class OutputChannelService : IOutputChannelService
     private readonly ISerialPortHubService _serialPortHub;
     private readonly IUdpService _udpSender;
     private readonly HashSet<string> _openPorts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _portsLock = new();
 
     public OutputChannelService(ISerialPortHubService serialPortHub, IUdpService udpSender)
     {
@@ -22,11 +23,17 @@ public sealed class OutputChannelService : IOutputChannelService
 
     public bool IsUdpOpen => _udpSender.IsOpen;
 
-    public int OpenComPortCount => _openPorts.Count;
+    public int OpenComPortCount
+    {
+        get
+        {
+            lock (_portsLock) return _openPorts.Count;
+        }
+    }
 
     public bool IsComPortOpen(string portName)
     {
-        return _openPorts.Contains(NormalizePortName(portName));
+        lock (_portsLock) return _openPorts.Contains(NormalizePortName(portName));
     }
 
     public async Task<OutputOpenResult> OpenAsync(OutputOpenRequest request)
@@ -59,9 +66,12 @@ public sealed class OutputChannelService : IOutputChannelService
             })
             .ToList());
 
-        foreach (PortOpenOutcome result in openResults.Where(result => result.Success))
+        lock (_portsLock)
         {
-            _openPorts.Add(result.PortName);
+            foreach (PortOpenOutcome result in openResults.Where(result => result.Success))
+            {
+                _openPorts.Add(result.PortName);
+            }
         }
 
         bool udpOpenSuccess = false;
@@ -77,9 +87,9 @@ public sealed class OutputChannelService : IOutputChannelService
 
     public void CloseAll()
     {
+        lock (_portsLock) _openPorts.Clear();
         _serialPortHub.CloseAll();
         _udpSender.Close();
-        _openPorts.Clear();
     }
 
     public bool TryOpenUdp(UdpTransportOptions options, out string? error)
@@ -109,28 +119,36 @@ public sealed class OutputChannelService : IOutputChannelService
             return false;
         }
 
-        if (_openPorts.Contains(normalizedPort))
+        lock (_portsLock)
         {
-            return true;
+            if (_openPorts.Contains(normalizedPort))
+            {
+                return true;
+            }
         }
 
         _serialPortHub.Configure(defaultBaudRate, portBaudRates, dataBits, parity, stopBits);
         bool success = _serialPortHub.Open(normalizedPort, out string serialError);
         if (success)
         {
-            _openPorts.Add(normalizedPort);
+            lock (_portsLock) _openPorts.Add(normalizedPort);
             return true;
         }
 
         error = serialError;
-        _openPorts.Remove(normalizedPort);
+        lock (_portsLock) _openPorts.Remove(normalizedPort);
         return false;
     }
 
     public bool TryWriteCom(string portName, string sentence, out string? error)
     {
+        error = null;
         string normalizedPort = NormalizePortName(portName);
-        if (!_openPorts.Contains(normalizedPort))
+
+        bool isOpen;
+        lock (_portsLock) isOpen = _openPorts.Contains(normalizedPort);
+
+        if (!isOpen)
         {
             error = new SerialPortNotOpenException().Message;
             return false;
@@ -139,7 +157,7 @@ public sealed class OutputChannelService : IOutputChannelService
         bool success = _serialPortHub.Write(normalizedPort, sentence, out error);
         if (!success)
         {
-            _openPorts.Remove(normalizedPort);
+            lock (_portsLock) _openPorts.Remove(normalizedPort);
         }
 
         return success;
@@ -152,7 +170,7 @@ public sealed class OutputChannelService : IOutputChannelService
 
     public void MarkComPortClosed(string portName)
     {
-        _openPorts.Remove(NormalizePortName(portName));
+        lock (_portsLock) _openPorts.Remove(NormalizePortName(portName));
     }
 
     public void Dispose()

@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 
-namespace NMEASender.Wpf.ViewModels.Shell;
+namespace NMEASender.Wpf.Models.UI;
 
 public sealed class BulkObservableCollection<T> : ObservableCollection<T>
 {
