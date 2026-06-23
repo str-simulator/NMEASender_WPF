@@ -1,9 +1,9 @@
-﻿using NMEASender.Wpf.Models.Core;
+﻿using NMEASender.Wpf.Exceptions;
+using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Projects;
 using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Projects;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
-using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Transmission;
 

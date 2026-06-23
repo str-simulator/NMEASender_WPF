@@ -1,6 +1,6 @@
-﻿using NMEASender.Wpf.Services.Interfaces.Config;
+﻿using NMEASender.Wpf.Exceptions;
+using NMEASender.Wpf.Services.Interfaces.Config;
 using System.IO;
-using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Config;
 
