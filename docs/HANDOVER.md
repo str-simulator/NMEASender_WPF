@@ -33,8 +33,8 @@
 6. `Services/Transmission/SentenceComposerService.cs`
 7. `Services/Transmission/NmeaSentenceBuilderService.cs`
 8. `Services/Projects/BaseProjectNmeaSentenceBuilder.cs`
-9. `Services/Projects/PS2404A/PS2404ANmeaSentenceBuilder.cs`
-10. `Services/Projects/PS2404A/PS2404ASentenceFramePolicy.cs`
+9. `Services/Projects/PS2404A/Ps2404aNmeaSentenceBuilder.cs`
+10. `Services/Projects/PS2404A/Ps2404aSentenceFramePolicy.cs`
 11. `Services/Config/NmeaSenderConfigService.cs`
 
 이 순서가 중요한 이유는 실제 실행 흐름이 거의 이 순서대로 이어지기 때문이다.
@@ -258,16 +258,19 @@ NMEA 생성 흐름은 이 프로젝트에서 가장 중요하다.
 
 ```text
 MainWorkflowService.SendTick()
--> NmeaTransmissionService.DispatchTick()
--> SentenceComposerService.ComposeAndApplyPreview()
--> NmeaSentenceBuilderService.Build()
--> Project별 IProjectNmeaSentenceBuilder.Build()
--> BaseProjectNmeaSentenceBuilder.Build()
--> BuildRawSentences()
--> Full()
--> ApplyTalkerProfile()
--> ProjectSentenceFrameService.ExpandForTransmit()
--> COM/UDP 송신
+-> NmeaTransmissionService.ComposeTick()          ← UI 스레드: 문장 생성 + 미리보기 갱신
+   -> ProjectSentenceFrameService.SelectForDispatch()
+   -> SentenceComposerService.ComposeAndApplyPreview()
+      -> NmeaSentenceBuilderService.Build()
+         -> Project별 IProjectNmeaSentenceBuilder.Build()
+            -> BaseProjectNmeaSentenceBuilder.Build()
+               -> BuildRawSentences()
+               -> Full()
+               -> ApplyTalkerProfile()
+      -> ProjectSentenceFrameService.ExpandForTransmit()
+-> NmeaTransmissionService.ExecuteSend()          ← 백그라운드 스레드: 실제 COM/UDP 송신
+   -> SendToCom()
+   -> SendToUdp()
 ```
 
 ### 7.1 MainWorkflowService.SendTick
@@ -285,21 +288,27 @@ MainWorkflowService.SendTick()
 
 여기서는 문장을 직접 만들지 않는다.
 
-### 7.2 NmeaTransmissionService.DispatchTick
+### 7.2 NmeaTransmissionService.ComposeTick / ExecuteSend
 
-`NmeaTransmissionService`는 송신 루프를 담당한다.
+`NmeaTransmissionService`는 송신 루프를 담당한다. UI 스레드 단계와 백그라운드 스레드 단계로 나뉜다.
 
-하는 일:
+`ComposeTick()` — UI 스레드에서 실행:
 
-- 프로젝트 정책으로 이번 Tick에 보낼 Sentence 선택
-- Sentence 생성 요청
-- 프로젝트별 프레임 확장
-- COM 송신
-- UDP 송신
+- 프로젝트 정책으로 이번 Tick에 보낼 Sentence 선택 (`SelectForDispatch`)
+- Sentence 생성 및 미리보기 텍스트 갱신
+- 프로젝트별 프레임 확장 (`ExpandForTransmit`)
+- 각 아이템의 COM/UDP 활성 여부 확인
+- 송신 작업 목록(`SentenceSendTask`) 반환
+
+`ExecuteSend()` — 백그라운드 스레드에서 실행:
+
+- `SentenceSendTask` 목록을 받아 COM 및 UDP로 실제 송신
+- 송신 실패 시 해당 포트 비활성화, 모든 출력이 닫히면 자동 Stop
 
 핵심 메서드:
 
-- `DispatchTick()`
+- `ComposeTick()`
+- `ExecuteSend()`
 - `SendToCom()`
 - `SendToUdp()`
 
@@ -374,7 +383,7 @@ IOS Source일 때 Fail Flag가 있으면 `ShouldSend()`에서 특정 문장을 �
 
 ### 7.6 PS2404ANmeaSentenceBuilder
 
-`Services/Projects/PS2404A/PS2404ANmeaSentenceBuilder.cs`는 PS2404A 전용 문장 생성 클래스다.
+`Services/Projects/PS2404A/Ps2404aNmeaSentenceBuilder.cs`는 PS2404A 전용 문장 생성 클래스다.
 
 Base와 다른 문장은 여기서 override한다.
 
@@ -449,8 +458,10 @@ PS2404A 전용 송신 정책이다.
 
 특징:
 
-- PORT/STBD RPM이 둘 다 켜져 있으면 Tick마다 하나씩 교대 송신
-- `$`로 시작하는 문장은 `1$...`, `2$...` 두 개로 확장
+- PORT/STBD RPM이 둘 다 켜져 있으면 Tick마다 하나씩 교대 송신 (`SelectForDispatch`)
+  - 같은 `NmeaSentenceId`를 가진 아이템이 여러 COM 포트에 걸쳐 있어도 전부 디스패치됨
+  - (예: COM3/COM7/COM9 모두 `RpmPort` 행이 있으면, 해당 Tick에 세 포트 전부 PORT RPM 전송)
+- `$`로 시작하는 문장은 `1$...`, `2$...` 두 개로 확장 (`ExpandForTransmit`)
 - `!`로 시작하는 AIS 문장은 동일 문장을 2번 송신
 - Sentence별 Multicast 주소 지원
 
@@ -637,7 +648,7 @@ ViewModel은 화면 바인딩과 Command 중심으로 유지한다.
 2. `SentenceItem.IsUdpEnabled`
 3. COM 포트가 실제로 열려 있는지
 4. UDP가 열려 있는지
-5. `NmeaTransmissionService.DispatchTick()`에서 `SendToCom()` 또는 `SendToUdp()`가 호출되는지
+5. `NmeaTransmissionService.ComposeTick()`에서 `SentenceSendTask`가 생성되는지, `ExecuteSend()`에서 `SendToCom()` / `SendToUdp()`가 호출되는지
 
 ### 13.3 PS2404A만 다르게 나올 때
 
@@ -711,7 +722,8 @@ class MainWorkflowService {
 
 class NmeaTransmissionService {
   +StartAsync()
-  +DispatchTick()
+  +ComposeTick()
+  +ExecuteSend()
   -SendToCom()
   -SendToUdp()
 }

@@ -25,7 +25,9 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 
 ## 3. 최신 업데이트 요약
 
-이번 업데이트는 기존 단일 로직 중심 구조를 프로젝트별 정책 기반 구조로 정리한 것이 핵심입니다.
+### 구조 개편
+
+기존 단일 로직 중심 구조를 프로젝트별 정책 기반 구조로 정리했습니다.
 
 - `BaseProjectNmeaSentenceBuilder`는 공통 문장 생성/체크섬/포맷 유틸만 담당하도록 정리
 - PS2404A 전용 NMEA 문장 생성 로직을 `Ps2404aNmeaSentenceBuilder`로 분리
@@ -37,6 +39,12 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - 문장별 UDP Port/Multicast Address 저장 및 송신 반영
 - 전역 `Use UDP` 체크박스 제거, 각 Sentence 행의 UDP 체크 상태로 송신 여부 결정
 - 검색 기능 추가로 문장명/ID/NMEA #1/#2 포함 검색 지원
+
+### 버그 수정
+
+- **PS2404A RPM 복수 COM 포트 디스패치 누락 수정** (`Ps2404aSentenceFramePolicy.SelectForDispatch`)
+  - 동일 `NmeaSentenceId`(RpmPort / RpmStbd)를 여러 COM 포트에 할당한 경우, 마지막 포트 항목만 디스패치되고 나머지는 누락되던 버그 수정
+  - 이제 같은 Sentence ID를 가진 모든 행(COM 포트)이 해당 Tick에 함께 전송됨
 
 ## 4. 최신 구조 업데이트
 
@@ -159,7 +167,7 @@ NMEA 문장을 COM/UDP로 송신하는 WPF(.NET 8) 기반 툴입니다.
 - `Ps2404aSendFlagCodec`
   - PS2404A 기존 MFC SEND FLAG 매핑 반영
 - `Ps2404aSentenceFramePolicy`
-  - PORT/STBD RPM 교대 송신
+  - PORT/STBD RPM 교대 송신 (복수 COM 포트에 동일 ID 할당 시 전체 포트 디스패치)
   - `$` 문장은 `1$...`, `2$...` 형태로 확장
   - `!` AIS 문장은 동일 문장 2회 송신
   - 문장별 Multicast 주소 지원
