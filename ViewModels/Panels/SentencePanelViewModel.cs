@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NMEASender.Wpf.Models.UI;
-using NMEASender.Wpf.Services.Interfaces.Workflow;
 using NMEASender.Wpf.Services.Interfaces.Search;
+using NMEASender.Wpf.Services.Interfaces.Workflow;
 using NMEASender.Wpf.ViewModels.Shell;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;

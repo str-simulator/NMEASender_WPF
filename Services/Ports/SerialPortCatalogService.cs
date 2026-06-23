@@ -1,6 +1,6 @@
-﻿using NMEASender.Wpf.Services.Interfaces.Ports;
+﻿using NMEASender.Wpf.Exceptions;
+using NMEASender.Wpf.Services.Interfaces.Ports;
 using System.IO.Ports;
-using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Ports;
 

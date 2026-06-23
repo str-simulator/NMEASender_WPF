@@ -1,3 +1,4 @@
+using NMEASender.Wpf.Exceptions;
 using NMEASender.Wpf.Models.Core;
 using NMEASender.Wpf.Models.Network;
 using NMEASender.Wpf.Models.UI;
@@ -5,7 +6,6 @@ using NMEASender.Wpf.Services.Interfaces.IO;
 using NMEASender.Wpf.Services.Interfaces.Ports;
 using NMEASender.Wpf.Services.Interfaces.Transmission;
 using System.Diagnostics;
-using NMEASender.Wpf.Exceptions;
 
 namespace NMEASender.Wpf.Services.Transmission;
 

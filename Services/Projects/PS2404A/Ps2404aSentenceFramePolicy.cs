@@ -25,39 +25,39 @@ public sealed class PS2404ASentenceFramePolicy : BaseProjectSentenceFramePolicy
         }
 
         List<SentenceItem> selected = new(enabledSentences.Count);
-        SentenceItem? rpmPort = null;
-        SentenceItem? rpmStbd = null;
+        List<SentenceItem> rpmPortItems = new();
+        List<SentenceItem> rpmStbdItems = new();
 
         foreach (SentenceItem item in enabledSentences)
         {
             if (item.Id == NmeaSentenceId.RpmPort)
             {
-                rpmPort = item;
+                rpmPortItems.Add(item);
                 continue;
             }
 
             if (item.Id == NmeaSentenceId.RpmStbd)
             {
-                rpmStbd = item;
+                rpmStbdItems.Add(item);
                 continue;
             }
 
             selected.Add(item);
         }
 
-        if (rpmPort is null && rpmStbd is null)
+        if (rpmPortItems.Count == 0 && rpmStbdItems.Count == 0)
         {
             return selected;
         }
 
-        if (rpmPort is not null && rpmStbd is not null)
+        if (rpmPortItems.Count > 0 && rpmStbdItems.Count > 0)
         {
-            selected.Add(_sendStarboardRpm ? rpmStbd : rpmPort);
+            selected.AddRange(_sendStarboardRpm ? rpmStbdItems : rpmPortItems);
             _sendStarboardRpm = !_sendStarboardRpm;
             return selected;
         }
 
-        selected.Add(rpmStbd ?? rpmPort!);
+        selected.AddRange(rpmStbdItems.Count > 0 ? rpmStbdItems : rpmPortItems);
         return selected;
     }
 
