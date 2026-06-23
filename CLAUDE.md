@@ -1,65 +1,67 @@
 # Claude.md
 
-## Claude.md Update Policy
+## Claude.md 업데이트 정책
 
-- When `Claude.md` is modified during a session, re-read it before continuing further code changes.
-- Apply the latest instructions from `Claude.md` after it has been updated.
+- 세션 중 `Claude.md`가 수정되면, 추가 코드 변경을 계속하기 전에 다시 읽어야 한다.
+- `Claude.md`가 업데이트된 뒤에는 최신 지침을 적용한다.
 
 <!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
+## MCP 도구: code-review-graph
 
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
+**중요: 이 프로젝트에는 지식 그래프가 있다. 코드베이스를 탐색하기 위해 Grep/Glob/Read를 사용하기 전에 항상 code-review-graph MCP 도구를 먼저 사용해야 한다.**
+그래프는 더 빠르고 비용이 적게 들며, 파일 스캔으로는 얻기 어려운 구조적 맥락, 호출자, 의존 항목, 테스트 커버리지 정보를 제공한다.
 
-### When to use graph tools FIRST
+### 그래프 도구를 먼저 사용해야 하는 경우
 
-* **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-* **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-* **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-* **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
-* **Architecture questions**: `get_architecture_overview` + `list_communities`
+* **코드 탐색**: Grep 대신 `semantic_search_nodes` 또는 `query_graph` 사용
+* **영향 범위 파악**: import를 수동으로 추적하는 대신 `get_impact_radius` 사용
+* **코드 리뷰**: 전체 파일을 읽는 대신 `detect_changes` + `get_review_context` 사용
+* **관계 찾기**: 호출자, 피호출자, import, 테스트, 의존성을 확인할 때 `query_graph` 사용
+* **아키텍처 질문**: `get_architecture_overview` + `list_communities` 사용
 
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
+그래프가 필요한 정보를 제공하지 못할 때만 Grep/Glob/Read로 대체한다.
 
-### Key Tools
+### code-review-graph MCP 도구를 사용할 수 없는 경우
 
-| Tool                        | Use when                                               |
+- code-review-graph MCP 도구를 사용할 수 없는 환경에서는, 사용할 수 없음을 사용자에게 알리고 일반 파일 탐색 도구로 대체한다.
+- 대체 도구를 사용할 때도 요청 범위를 벗어나지 않도록 주의한다.
+
+### 주요 도구
+
+| 도구                        | 사용 시점                                               |
 | --------------------------- | ------------------------------------------------------ |
-| `detect_changes`            | Reviewing code changes — gives risk-scored analysis    |
-| `get_review_context`        | Need source snippets for review — token-efficient      |
-| `get_impact_radius`         | Understanding blast radius of a change                 |
-| `get_affected_flows`        | Finding which execution paths are impacted             |
-| `query_graph`               | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes`     | Finding functions/classes by name or keyword           |
-| `get_architecture_overview` | Understanding high-level codebase structure            |
-| `refactor_tool`             | Planning renames, finding dead code                    |
+| `detect_changes`            | 코드 변경 사항 리뷰 — 위험도 기반 분석 제공            |
+| `get_review_context`        | 리뷰용 소스 스니펫이 필요할 때 — 토큰 효율적           |
+| `get_impact_radius`         | 변경의 영향 범위를 파악할 때                           |
+| `get_affected_flows`        | 영향을 받는 실행 경로를 찾을 때                         |
+| `query_graph`               | 호출자, 피호출자, import, 테스트, 의존성을 추적할 때   |
+| `semantic_search_nodes`     | 이름이나 키워드로 함수/클래스를 찾을 때                 |
+| `get_architecture_overview` | 코드베이스의 상위 구조를 이해할 때                      |
+| `refactor_tool`             | 이름 변경 계획, 죽은 코드 탐색                          |
 
-### Workflow
+### 작업 흐름
 
-1. The graph auto-updates on file changes via hooks.
-2. Use `detect_changes` for code review.
-3. Use `get_affected_flows` to understand impact.
-4. Use `query_graph` with `pattern="tests_for"` to check coverage.
+1. 그래프는 파일 변경 시 hooks를 통해 자동으로 업데이트된다.
+2. 코드 리뷰에는 `detect_changes`를 사용한다.
+3. 영향 범위 파악에는 `get_affected_flows`를 사용한다.
+4. 커버리지 확인에는 `query_graph`와 `pattern="tests_for"`를 사용한다.
 
-## Response Language
+## 응답 언어
 
-* Respond in Korean by default.
-* Use another language only when the user explicitly requests it.
+* 기본적으로 한국어로 응답한다.
+* 사용자가 명시적으로 다른 언어를 요청한 경우에만 다른 언어를 사용한다.
 
-## Git / Change Policy
+## Git / 변경 정책
 
-* Do not make changes outside the requested scope.
-* Do not modify unrelated files.
-* If a file must be deleted or renamed, explain the reason to the user first.
-* When many code changes are made, avoid committing them all at once.
-* Split commits by feature, responsibility, or logically related change set.
+* 요청 범위를 벗어난 변경은 하지 않는다.
+* 관련 없는 파일은 수정하지 않는다.
+* 파일을 삭제하거나 이름을 변경해야 하는 경우, 먼저 사용자에게 이유를 설명한다.
+* 코드 변경이 많을 경우 한 번에 모두 커밋하지 않는다.
+* 기능, 책임, 논리적으로 관련된 변경 단위별로 커밋을 나눈다.
 
-## Git Commit Message Rules
+## Git 커밋 메시지 규칙
 
-When creating a commit message for Git push, use the following format:
+Git push를 위한 커밋 메시지를 작성할 때는 다음 형식을 사용한다.
 
 ```text
 <type> : <title>
@@ -69,33 +71,33 @@ When creating a commit message for Git push, use the following format:
 <footer>
 ```
 
-### Language
+### 언어
 
-* Write commit messages in Korean.
-* Keep the commit type in English.
-* Use English only for conventional keywords such as `Close`, `Fixes`, or issue references when needed.
+* 커밋 메시지는 한국어로 작성한다.
+* 커밋 타입은 영어로 유지한다.
+* `Close`, `Fixes`, 이슈 참조 등 관례적인 키워드가 필요한 경우에만 영어를 사용한다.
 
-### Title
+### 제목
 
-* Write the title in the format `<type> : <title>`.
-* Keep the title within 50 characters.
-* Clearly describe what changed.
-* Do not end the title with a period.
-* Write the title in Korean.
+* 제목은 `<type> : <title>` 형식으로 작성한다.
+* 제목은 50자 이내로 유지한다.
+* 변경 내용을 명확하게 설명한다.
+* 제목 끝에 마침표를 붙이지 않는다.
+* 제목은 한국어로 작성한다.
 
-Example:
+예시:
 
 ```text
 feat : 로그인 기능 추가
 ```
 
-### Body
+### 본문
 
-* Write specific details about the change in Korean.
-* Use `-` for multiple lines.
-* Keep each line within 72 characters.
+* 변경 사항의 구체적인 내용을 한국어로 작성한다.
+* 여러 줄이 필요한 경우 `-`를 사용한다.
+* 각 줄은 72자 이내로 유지한다.
 
-Example:
+예시:
 
 ```text
 feat : 로그인 기능 추가
@@ -104,13 +106,13 @@ feat : 로그인 기능 추가
 - 로그인 실패 시 오류 메시지를 표시
 ```
 
-### Footer
+### 푸터
 
-* Do not add `Co-Authored-By` trailers for AI tools unless the user explicitly requests it.
-* Add related issue numbers when applicable.
-* Use conventional English keywords such as `Close`, `Fixes`, or `Refs` when needed.
+* 사용자가 명시적으로 요청하지 않는 한 AI 도구에 대한 `Co-Authored-By` 트레일러를 추가하지 않는다.
+* 관련 이슈 번호가 있으면 추가한다.
+* 필요한 경우 `Close`, `Fixes`, `Refs` 같은 관례적인 영어 키워드를 사용한다.
 
-Example:
+예시:
 
 ```text
 feat : 로그인 기능 추가
@@ -121,58 +123,76 @@ feat : 로그인 기능 추가
 Close #7
 ```
 
-### Commit Types
+### 커밋 타입
 
-* `feat` : Add a new feature
-* `fix` : Fix a bug
-* `docs` : Documentation changes
-* `test` : Add or update tests
-* `refact` : Code refactoring
-* `style` : Changes that do not affect code meaning
-* `chore` : Build system or package manager changes
+* `feat` : 새 기능 추가
+* `fix` : 버그 수정
+* `docs` : 문서 변경
+* `test` : 테스트 추가 또는 수정
+* `refactor` : 코드 리팩터링
+* `style` : 코드 의미에 영향을 주지 않는 변경
+* `chore` : 빌드 시스템 또는 패키지 매니저 변경
 
+## 코드 규칙
 
-## Code Rules
+1. C# WPF 프로젝트에서는 MVVM 패턴을 엄격히 따른다.
 
-1. For C# WPF projects, strictly follow the MVVM pattern.
+   * View, ViewModel, Model의 책임을 명확히 분리한다.
+   * code-behind 사용을 최소화한다.
+   * 바인딩, 커맨드, behavior, attached property로 깔끔하게 처리하기 어려운 View 전용 동작에만 code-behind를 사용한다.
 
-   * Clearly separate the responsibilities of View, ViewModel, and Model.
-   * Minimize code-behind usage.
-   * Use code-behind only for view-specific behavior that cannot be handled cleanly through binding, commands, behaviors, or attached properties.
+2. 기존 코드 스타일을 최대한 유지한다.
 
-2. Preserve the existing code style as much as possible.
+   * 프로젝트에서 이미 사용 중인 네이밍, 포맷팅, 폴더 구조, 아키텍처 관례를 따른다.
+   * 기존 코드 스타일이 일관되지 않거나 부적절해 보이면, 광범위한 변경을 조용히 적용하지 말고 사용자에게 먼저 알린다.
+   * 대규모 재작성 대신 적절한 수정 계획을 사용자에게 안내한다.
 
-   * Follow the naming, formatting, folder structure, and architectural conventions already used in the project.
-   * If the existing code style is inconsistent or appears inappropriate, notify the user before making broad changes.
-   * Guide the user toward an appropriate correction plan instead of silently rewriting large parts of the codebase.
+3. 코드는 모듈 단위로 개발한다.
 
-3. Develop code in modular units.
+   * 새 기능은 적절한 모듈, 클래스, 서비스, 컴포넌트, ViewModel 등으로 분리한다.
+   * 기존 파일에 크고 강하게 결합된 로직 블록을 추가하지 않는다.
+   * 추가적인 아키텍처 계층이 필요하면 적절한 폴더나 namespace를 만든다.
+   * 새 계층, 폴더, 모듈 구조를 도입할 때는 그 이유를 사용자에게 설명한다.
 
-   * Separate new functionality into clear modules, classes, services, components, or ViewModels as appropriate.
-   * Avoid adding large, tightly coupled logic blocks to existing files.
-   * If an additional architectural layer is required, create an appropriate folder or namespace for that layer.
-   * Inform the user when a new layer, folder, or module structure is introduced and explain why it is needed.
+4. 사용되지 않는 코드가 있으면 사용자에게 알리고 삭제 방향을 안내한다.
 
-4. Notify the user about unused code and guide them toward deletion.
+   * 사용되지 않거나, 중복되거나, 참조되지 않는 것으로 보이는 코드를 즉시 삭제하지 않는다.
+   * 왜 사용되지 않는 것으로 보이는지 설명한다.
+   * 정리 또는 삭제 계획을 제안하고, 사용자 확인 후 변경을 적용한다.
 
-   * Do not immediately delete code that appears unused, duplicated, or unreferenced.
-   * Explain why the code appears to be unused.
-   * Suggest a cleanup or deletion plan and apply the change only after user confirmation.
+5. 인터페이스는 교체 가능성, 테스트 가능성, 아키텍처 경계를 기준으로 정의한다.
 
-5. Define interfaces based on replaceability, testability, and architectural boundaries.
+   * 구현이 변경될 가능성이 있을 때 인터페이스를 만든다.
+   * 테스트에서 Mock 또는 Fake로 대체해야 하는 의존성에는 인터페이스를 만든다.
+   * 데이터베이스, 파일, 네트워크, UI 다이얼로그, 장치, 하드웨어 통신 같은 외부 의존성에는 인터페이스를 만든다.
+   * ViewModel이 구체 구현에 직접 의존해 MVVM 경계를 깨뜨릴 수 있을 때 인터페이스를 만든다.
+   * 여러 구현이 존재할 수 있을 때 인터페이스를 만든다.
+   * 기능이 플러그인 기반 또는 모듈식 구조로 확장될 가능성이 있을 때 인터페이스를 만든다.
 
-   * Create an interface when the implementation may change.
-   * Create an interface when the dependency needs to be replaced with a Mock or Fake in tests.
-   * Create an interface for external dependencies such as databases, files, networks, UI dialogs, devices, or hardware communication.
-   * Create an interface when a ViewModel depending directly on a concrete implementation would break MVVM boundaries.
-   * Create an interface when multiple implementations may exist.
-   * Create an interface when the feature may expand into a plugin-based or modular structure.
+   명확한 설계상 이점이 없다면 인터페이스를 만들지 않는다.
 
-   Do not create an interface when it provides no clear design benefit.
+   * 단순 데이터 모델이나 DTO에는 인터페이스를 만들지 않는다.
+   * 구현이 하나뿐이고 변경 가능성이 낮으면 인터페이스를 만들지 않는다.
+   * 테스트에서 대체할 필요가 없는 의존성에는 인터페이스를 만들지 않는다.
+   * 순수 함수에 가까운 내부 계산 로직에는 인터페이스를 만들지 않는다.
+   * ViewModel에 기본적으로 인터페이스를 만들지 않는다.
+   * 설계 개선 없이 이름과 구조적 부담만 늘리는 인터페이스 생성을 피한다.
 
-   * Do not create an interface for simple data models or DTOs.
-   * Do not create an interface when there is only one implementation and it is unlikely to change.
-   * Do not create an interface when the dependency does not need to be replaced in tests.
-   * Do not create an interface for internal calculation logic that is close to a pure function.
-   * Do not create interfaces for ViewModels by default.
-   * Avoid creating interfaces that only increase naming and structural overhead without improving the design.
+6. 프로그램에 표시되는 모든 사용자-facing 문구는 영어로 작성한다.
+
+   * 로그 메시지, 상태 메시지, 오류 메시지, 알림, 버튼, 라벨, 툴팁 등 프로그램 화면이나 로그에 표시되는 모든 문자열은 영어로 통일한다.
+   * 예: `AddLog("Waiting for SharedMemory... (will start automatically when connected)");`
+   * 코드 주석, 개발 문서, 커밋 메시지, 사용자와의 응답 언어는 별도 규칙을 따른다.
+   * 기존 문자열을 수정하거나 새 문자열을 추가할 때 한국어와 영어가 섞이지 않도록 확인한다.
+
+7. WPF 프로젝트에서 CommunityToolkit.Mvvm을 사용할 경우 DI 구조를 명확히 유지한다.
+
+   * ViewModel, Service, Repository 등 의존성이 있는 객체는 DI 컨테이너를 통해 생성하고 주입한다.
+   * ViewModel 내부에서 직접 `new`로 Service, Repository, Dialog, Hardware, File, Network 관련 객체를 생성하지 않는다.
+   * DI 등록은 애플리케이션 시작 지점에서 한 곳에 모아 관리한다.
+   * ViewModel에는 생성자 주입을 우선 사용한다.
+   * 단순 DTO, Model, 순수 계산용 객체처럼 의존성이 없고 교체 가능성이 낮은 객체는 DI 등록 대상에서 제외할 수 있다.
+   * View에서 ViewModel을 직접 생성하기보다 DI 컨테이너에서 Resolve된 ViewModel을 DataContext로 연결한다.
+   * `IServiceProvider`를 ViewModel 곳곳에 직접 주입해 Service Locator처럼 사용하는 방식은 피한다.
+   * `IMessenger`, 설정 서비스, 로그 서비스, 다이얼로그 서비스, 파일/네트워크/장치 접근 서비스처럼 교체 가능하거나 테스트 대체가 필요한 의존성은 인터페이스를 통해 주입한다.
+   * CommunityToolkit.Mvvm의 `[ObservableProperty]`, `[RelayCommand]`, `ObservableObject`, `IMessenger` 사용 방식은 기존 프로젝트 스타일과 일관되게 유지한다.
