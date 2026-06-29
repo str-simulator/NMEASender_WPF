@@ -17,6 +17,8 @@ public interface IMainWorkflowService : IDisposable
 
     void OpenSettings();
 
+    void OpenSummary();
+
     void SetData();
 
     void GetData();

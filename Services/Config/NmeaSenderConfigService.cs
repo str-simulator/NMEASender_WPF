@@ -27,6 +27,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     private const string UdpPortsSection = "UDP PORTS";
     private const string UdpAddressesSection = "UDP ADDRESSES";
     private const string BaudSection = "BAUD RATE";
+    private const string SourceNotesSection = "SOURCE NOTES";
 
     public string Title { get; set; } = "ECDIS Sender";
     public string DefaultPort { get; set; } = "COM1";
@@ -49,6 +50,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     public Dictionary<NmeaSentenceId, List<int>> SentenceUdpPortRows { get; } = new();
     public Dictionary<NmeaSentenceId, List<string>> SentenceUdpAddressRows { get; } = new();
     public Dictionary<string, int> PortBaudRates { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> SourceNotes { get; } = new(StringComparer.OrdinalIgnoreCase);
     public string SavePath { get; set; } = Path.Combine(AppContext.BaseDirectory, "NMEASender.Wpf.ini");
 
     private NmeaSenderConfigService(
@@ -202,6 +204,17 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
             }
         }
 
+        foreach ((string sourceKey, string noteText) in ini.GetSectionValues(SourceNotesSection))
+        {
+            string normalizedKey = (sourceKey ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedKey))
+            {
+                continue;
+            }
+
+            config.SourceNotes[normalizedKey] = noteText ?? string.Empty;
+        }
+
         return config;
     }
 
@@ -235,6 +248,23 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
             }
 
             ini.Set(BaudSection, NormalizePortName(portName), NormalizeBaudRate(baudRate).ToString());
+        }
+
+        foreach ((string sourceKey, string noteText) in SourceNotes.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            string normalizedKey = (sourceKey ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedKey))
+            {
+                continue;
+            }
+
+            string normalizedNote = noteText ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedNote))
+            {
+                continue;
+            }
+
+            ini.Set(SourceNotesSection, normalizedKey, normalizedNote);
         }
 
         foreach (IGrouping<NmeaSentenceId, SentenceItem> group in itemList.GroupBy(item => item.Id))
