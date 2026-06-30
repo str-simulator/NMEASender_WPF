@@ -34,6 +34,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
     private readonly ISentenceCatalogService _sentenceCatalog;
     private readonly ISerialPortCatalogService _serialPortCatalogService;
     private readonly IBaudRateSettingService _portBaudRateSettingsDialogService;
+    private readonly ITransmissionSummaryDialogService _transmissionSummaryDialogService;
     private readonly IApplicationLifecycleService _applicationLifecycleService;
     private readonly IManualInputMapperService _manualInputMapperService;
     private readonly INmeaSenderConfigService _config;
@@ -54,6 +55,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
         ISentenceCatalogService sentenceCatalog,
         ISerialPortCatalogService serialPortCatalogService,
         IBaudRateSettingService portBaudRateSettingsDialogService,
+        ITransmissionSummaryDialogService transmissionSummaryDialogService,
         IApplicationLifecycleService applicationLifecycleService,
         IManualInputMapperService manualInputMapperService,
         INmeaSenderConfigService config)
@@ -68,6 +70,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
         _sentenceCatalog = sentenceCatalog ?? throw new ArgumentNullException(nameof(sentenceCatalog));
         _serialPortCatalogService = serialPortCatalogService ?? throw new ArgumentNullException(nameof(serialPortCatalogService));
         _portBaudRateSettingsDialogService = portBaudRateSettingsDialogService ?? throw new ArgumentNullException(nameof(portBaudRateSettingsDialogService));
+        _transmissionSummaryDialogService = transmissionSummaryDialogService ?? throw new ArgumentNullException(nameof(transmissionSummaryDialogService));
         _applicationLifecycleService = applicationLifecycleService ?? throw new ArgumentNullException(nameof(applicationLifecycleService));
         _manualInputMapperService = manualInputMapperService ?? throw new ArgumentNullException(nameof(manualInputMapperService));
         _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -267,6 +270,16 @@ public sealed class MainWorkflowService : IMainWorkflowService
         {
             _nmeaTransmissionService.HandleUdpToggleDuringRun(State.IsRunning, State.IsOpening, false, _config.UdpTransportOptions, AddLog);
             SyncUdpOutputStateDuringRun();
+        }
+    }
+
+    public void OpenSummary()
+    {
+        IReadOnlyList<TransmissionSourceSummaryItem> items = BuildTransmissionSummaryItems();
+        IReadOnlyDictionary<string, string> updatedNotes = _transmissionSummaryDialogService.Show(items);
+        if (TryApplySourceNotes(updatedNotes))
+        {
+            SaveConfig();
         }
     }
 
@@ -945,6 +958,107 @@ public sealed class MainWorkflowService : IMainWorkflowService
         return true;
     }
 
+    private IReadOnlyList<TransmissionSourceSummaryItem> BuildTransmissionSummaryItems()
+    {
+        List<TransmissionSourceSummaryItem> result = new();
+
+        IEnumerable<IGrouping<string, SentenceItem>> comGroups = State.ConfigurableSentences()
+            .Where(item => item.IsComEnabled && !string.IsNullOrWhiteSpace(item.PortName))
+            .GroupBy(item => item.PortName.Trim(), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (IGrouping<string, SentenceItem> group in comGroups)
+        {
+            string portName = group.Key;
+            int baudRate = _portBaudRateService.ResolveBaudRate(_config, portName);
+            string sourceKey = BuildComSourceKey(portName);
+            string memo = _config.SourceNotes.TryGetValue(sourceKey, out string? configuredMemo)
+                ? configuredMemo
+                : string.Empty;
+
+            result.Add(new TransmissionSourceSummaryItem(
+                sourceKey,
+                portName,
+                $"BaudRate {baudRate}",
+                string.Empty,
+                group.Select(item => item.Label),
+                memo));
+        }
+
+        UdpTransportMode udpMode = _config.UdpTransportOptions.Mode;
+        IEnumerable<IGrouping<string, SentenceItem>> udpGroups = State.ConfigurableSentences()
+            .Where(item => item.IsUdpEnabled)
+            .GroupBy(
+                item => BuildUdpGroupKey(
+                    NormalizeUdpPort(item.UdpPort),
+                    ResolveSentenceUdpAddress(item.UdpAddress, _config.UdpTransportOptions.MulticastAddress),
+                    udpMode),
+                StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (IGrouping<string, SentenceItem> group in udpGroups)
+        {
+            SentenceItem first = group.First();
+            int udpPort = NormalizeUdpPort(first.UdpPort);
+            string udpAddress = ResolveSentenceUdpAddress(first.UdpAddress, _config.UdpTransportOptions.MulticastAddress);
+            string sourceKey = BuildUdpSourceKey(udpPort, udpAddress, udpMode);
+            string memo = _config.SourceNotes.TryGetValue(sourceKey, out string? configuredMemo)
+                ? configuredMemo
+                : string.Empty;
+            string secondaryText = udpMode == UdpTransportMode.Multicast
+                ? $"Address {udpAddress}"
+                : string.Empty;
+
+            result.Add(new TransmissionSourceSummaryItem(
+                sourceKey,
+                $"UDP {udpPort}",
+                $"UDP Port {udpPort}",
+                secondaryText,
+                group.Select(item => item.Label),
+                memo));
+        }
+
+        return result;
+    }
+
+    private bool TryApplySourceNotes(IReadOnlyDictionary<string, string> sourceNotes)
+    {
+        Dictionary<string, string> normalized = new(StringComparer.OrdinalIgnoreCase);
+        foreach ((string rawKey, string rawValue) in sourceNotes)
+        {
+            string key = (rawKey ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            string value = rawValue ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            normalized[key] = value;
+        }
+
+        bool changed = _config.SourceNotes.Count != normalized.Count ||
+                       _config.SourceNotes.Any(pair => !normalized.TryGetValue(pair.Key, out string? value) ||
+                                                       !string.Equals(pair.Value, value, StringComparison.Ordinal));
+
+        if (!changed)
+        {
+            return false;
+        }
+
+        _config.SourceNotes.Clear();
+        foreach ((string key, string value) in normalized)
+        {
+            _config.SourceNotes[key] = value;
+        }
+
+        return true;
+    }
+
     private void SaveConfig()
     {
         try
@@ -1048,6 +1162,25 @@ public sealed class MainWorkflowService : IMainWorkflowService
     {
         string candidate = (value ?? string.Empty).Trim();
         return UdpTransportOptions.NormalizeAddress(candidate, fallbackAddress);
+    }
+
+    private static string BuildComSourceKey(string portName)
+    {
+        return $"COM:{(portName ?? string.Empty).Trim().ToUpperInvariant()}";
+    }
+
+    private static string BuildUdpGroupKey(int udpPort, string udpAddress, UdpTransportMode udpMode)
+    {
+        return udpMode == UdpTransportMode.Multicast
+            ? $"{udpPort}|{udpAddress}"
+            : udpPort.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static string BuildUdpSourceKey(int udpPort, string udpAddress, UdpTransportMode udpMode)
+    {
+        return udpMode == UdpTransportMode.Multicast
+            ? $"UDP:{udpPort}@{udpAddress}"
+            : $"UDP:{udpPort}";
     }
 
     private static void ShowComOpenFailureDialog(

@@ -22,6 +22,7 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
         RefreshPortsCommand = new RelayCommand(_workflow.RefreshPorts);
         ApplyDefaultPortCommand = new RelayCommand(_workflow.ApplyDefaultPort);
         ClearSentenceSearchCommand = new RelayCommand(ClearSentenceSearch);
+        OpenSummaryCommand = new RelayCommand(_workflow.OpenSummary);
         OpenSettingsCommand = new RelayCommand(_workflow.OpenSettings);
         ExitCommand = new RelayCommand(_workflow.Exit);
 
@@ -73,6 +74,8 @@ public sealed class TopToolbarViewModel : ObservableObject, IDisposable
     public IRelayCommand ApplyDefaultPortCommand { get; }
 
     public IRelayCommand ClearSentenceSearchCommand { get; }
+
+    public IRelayCommand OpenSummaryCommand { get; }
 
     public IRelayCommand OpenSettingsCommand { get; }
 

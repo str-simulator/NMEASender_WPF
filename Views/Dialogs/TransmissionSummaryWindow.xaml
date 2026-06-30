@@ -1,0 +1,174 @@
+<Window x:Class="NMEASender.Wpf.Views.Dialogs.TransmissionSummaryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Transmission Summary"
+        Width="900"
+        Height="720"
+        MinWidth="700"
+        MinHeight="520"
+        ResizeMode="CanResize"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock FontSize="16"
+                       FontWeight="SemiBold"
+                       Text="Transmission Summary" />
+            <TextBlock Margin="0,6,0,0"
+                       Foreground="#5F6B84"
+                       Text="Check which sentences are sent by each COM port or UDP endpoint, and keep notes per source." />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Padding="10"
+                Background="#F9FBFF"
+                BorderBrush="#D8DEE9"
+                BorderThickness="1"
+                CornerRadius="8">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Resources>
+                    <Style BasedOn="{StaticResource LogScrollBarStyle}" TargetType="{x:Type ScrollBar}" />
+                </ScrollViewer.Resources>
+
+                <ItemsControl ItemsSource="{Binding Sources}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Expander Margin="0,0,0,10"
+                                      IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
+                                <Expander.Header>
+                                    <Grid Margin="0,2,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="180" />
+                                            <ColumnDefinition Width="180" />
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock VerticalAlignment="Center"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding DisplayName}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Margin="12,0,12,0"
+                                                   VerticalAlignment="Center"
+                                                   FontWeight="Bold"
+                                                   Text="{Binding SummaryText}" />
+                                        <TextBlock Grid.Column="2"
+                                                   Margin="0,0,12,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#61718B"
+                                                   Text="{Binding SentenceCount, StringFormat={}Sentences {0}}" />
+                                        <TextBlock Grid.Column="3"
+                                                   Margin="0,0,12,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#425066"
+                                                   Text="{Binding Memo}"
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Style>
+                                                <Style TargetType="{x:Type TextBlock}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasMemo}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="4"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#61718B"
+                                                   Text="{Binding SecondaryText}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="{x:Type TextBlock}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasSecondaryText}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Expander.Header>
+
+                                <Border Margin="0,10,0,0"
+                                        Padding="12"
+                                        Background="White"
+                                        BorderBrush="#DFE5F0"
+                                        BorderThickness="1"
+                                        CornerRadius="6">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Grid.Row="0"
+                                                   FontWeight="SemiBold"
+                                                   Text="Sentence" />
+                                        <ItemsControl Grid.Row="1"
+                                                      Margin="0,8,0,12"
+                                                      ItemsSource="{Binding Sentences}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,0,6"
+                                                            Padding="10,6"
+                                                            Background="#F5F8FD"
+                                                            BorderBrush="#E0E7F2"
+                                                            BorderThickness="1"
+                                                            CornerRadius="4">
+                                                        <TextBlock Text="{Binding}" />
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <TextBlock Grid.Row="2"
+                                                   Margin="0,0,0,8"
+                                                   FontWeight="SemiBold"
+                                                   Text="Memo" />
+                                        <TextBox Grid.Row="3"
+                                                 Height="96"
+                                                 AcceptsReturn="True"
+                                                 Text="{Binding Memo, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 TextWrapping="Wrap"
+                                                 VerticalScrollBarVisibility="Auto" />
+                                    </Grid>
+                                </Border>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       VerticalAlignment="Center"
+                       Foreground="#6E7A90"
+                       Text="Notes are saved automatically when the window closes." />
+            <Button Grid.Column="1"
+                    Width="90"
+                    Command="{Binding CloseCommand}"
+                    Content="Close" />
+        </Grid>
+    </Grid>
+</Window>
