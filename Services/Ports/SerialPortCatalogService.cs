@@ -38,6 +38,19 @@ public sealed class SerialPortCatalogService : ISerialPortCatalogService
             return defaultPort;
         }
 
+        // 요청 포트/기본 포트가 일시적으로 사용 불가능한 상태(예: 케이블 뽑힘).
+        // 다른 연결된 포트로 조용히 전환하지 않고 설정된 포트 이름을 그대로 유지하여
+        // 연결 해제로 인해 사용자 설정이 덮어써지지 않도록 한다.
+        if (!string.IsNullOrWhiteSpace(requestedPort))
+        {
+            return requestedPort;
+        }
+
+        if (!string.IsNullOrWhiteSpace(defaultPort))
+        {
+            return defaultPort;
+        }
+
         return portSet.FirstOrDefault() ?? string.Empty;
     }
 
