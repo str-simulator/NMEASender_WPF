@@ -50,6 +50,8 @@ public interface INmeaSenderConfigService
 
     Dictionary<string, int> PortBaudRates { get; }
 
+    Dictionary<string, string> SourceNotes { get; }
+
     string SavePath { get; set; }
 
     void Save(IEnumerable<SentenceItem> items);

@@ -22,6 +22,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <Button Grid.Column="0"
@@ -93,13 +94,25 @@
             </StackPanel>
 
             <Button Grid.Column="10"
+                    Width="36"
+                    MinWidth="36"
+                    Margin="0,0,8,0"
+                    HorizontalAlignment="Right"
+                    Command="{Binding OpenSummaryCommand}"
+                    Style="{StaticResource ToolbarButtonStyle}">
+                <TextBlock FontSize="18"
+                           FontWeight="Bold"
+                           Text="!" />
+            </Button>
+
+            <Button Grid.Column="11"
                     Margin="0,0,8,0"
                     HorizontalAlignment="Right"
                     Command="{Binding OpenSettingsCommand}"
                     Content="Settings"
                     Style="{StaticResource ToolbarButtonStyle}" />
 
-            <Button Grid.Column="11"
+            <Button Grid.Column="12"
                     HorizontalAlignment="Right"
                     Command="{Binding ExitCommand}"
                     Content="EXIT"

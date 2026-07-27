@@ -88,6 +88,7 @@ public partial class App : Application
         services.AddSingleton<ISerialPortCatalogService, SerialPortCatalogService>();
         services.AddSingleton<IBaudRateSettingService, BaudRateSettingService>();
         services.AddSingleton<IApplicationLifecycleService, ApplicationLifecycleService>();
+        services.AddSingleton<ITransmissionSummaryDialogService, TransmissionSummaryDialogService>();
 
         services.AddSingleton<MainStateStore>();
         services.AddSingleton<IMainWorkflowService, MainWorkflowService>();
