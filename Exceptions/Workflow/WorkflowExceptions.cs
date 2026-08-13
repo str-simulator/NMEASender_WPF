@@ -23,3 +23,11 @@ public sealed class WorkflowConfigSaveException : WorkflowException
     {
     }
 }
+
+public sealed class InvalidSentenceHzException : WorkflowException
+{
+    public InvalidSentenceHzException()
+        : base($"Sentence Hz must be at least {NMEASender.Wpf.Models.UI.SentenceItem.MinHz}.")
+    {
+    }
+}

@@ -27,6 +27,7 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
         out IReadOnlyDictionary<string, int> updatedPortBaudRates,
         out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts,
         out IReadOnlyDictionary<string, string> updatedSentenceUdpAddresses,
+        out IReadOnlyDictionary<string, double> updatedSentenceHz,
         out int updatedUdpPort,
         out UdpTransportOptions updatedUdpTransportOptions)
     {
@@ -51,6 +52,7 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
             updatedPortBaudRates = viewModel.Result;
             updatedSentenceUdpPorts = viewModel.SentenceUdpPortResult;
             updatedSentenceUdpAddresses = viewModel.SentenceUdpAddressResult;
+            updatedSentenceHz = viewModel.SentenceHzResult;
             updatedUdpPort = viewModel.UdpPortResult;
             updatedUdpTransportOptions = viewModel.UdpTransportResult;
             return true;
@@ -64,6 +66,10 @@ public sealed class BaudRateSettingService : IBaudRateSettingService
         updatedSentenceUdpAddresses = currentSentenceUdpPorts.ToDictionary(
             item => item.RowKey,
             item => (item.UdpAddress ?? string.Empty).Trim(),
+            StringComparer.OrdinalIgnoreCase);
+        updatedSentenceHz = currentSentenceUdpPorts.ToDictionary(
+            item => item.RowKey,
+            item => item.Hz,
             StringComparer.OrdinalIgnoreCase);
         updatedUdpPort = currentUdpPort;
         updatedUdpTransportOptions = currentUdpTransportOptions;

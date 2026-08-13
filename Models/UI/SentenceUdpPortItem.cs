@@ -4,12 +4,13 @@ namespace NMEASender.Wpf.Models.UI;
 
 public sealed partial class SentenceUdpPortItem : ObservableObject
 {
-    public SentenceUdpPortItem(string rowKey, string sentenceLabel, int udpPort, string udpAddress)
+    public SentenceUdpPortItem(string rowKey, string sentenceLabel, int udpPort, string udpAddress, double hz)
     {
         RowKey = rowKey;
         SentenceLabel = sentenceLabel;
         _udpPort = udpPort;
         _udpAddress = (udpAddress ?? string.Empty).Trim();
+        _hz = hz;
     }
 
     public string RowKey { get; }
@@ -21,6 +22,9 @@ public sealed partial class SentenceUdpPortItem : ObservableObject
 
     [ObservableProperty]
     private string _udpAddress = string.Empty;
+
+    [ObservableProperty]
+    private double _hz;
 
     partial void OnUdpAddressChanged(string value)
     {

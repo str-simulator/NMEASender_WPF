@@ -48,6 +48,8 @@ public interface INmeaSenderConfigService
 
     Dictionary<NmeaSentenceId, List<string>> SentenceUdpAddressRows { get; }
 
+    Dictionary<NmeaSentenceId, List<double>> SentenceHzRows { get; }
+
     Dictionary<string, int> PortBaudRates { get; }
 
     Dictionary<string, string> SourceNotes { get; }

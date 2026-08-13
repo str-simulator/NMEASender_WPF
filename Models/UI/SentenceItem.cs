@@ -26,10 +26,17 @@ public sealed partial class SentenceItem : ObservableObject
     private string _udpAddress = string.Empty;
 
     [ObservableProperty]
+    private double _hz;
+
+    [ObservableProperty]
     private string _primaryText = string.Empty;
 
     [ObservableProperty]
     private string _secondaryText = string.Empty;
+
+    // Runtime-only send-scheduling state (not persisted, not UI-bound):
+    // ticks (Environment.TickCount64) at which this sentence was last actually sent.
+    public long LastSentTicks { get; set; } = long.MinValue;
 
     public SentenceItem(
         NmeaSentenceId id,
@@ -40,6 +47,7 @@ public sealed partial class SentenceItem : ObservableObject
         bool isUdpEnabled,
         int udpPort,
         string udpAddress = "",
+        double hz = DefaultHz,
         bool hasSecondary = false,
         bool isDuplicateRow = false)
     {
@@ -51,9 +59,13 @@ public sealed partial class SentenceItem : ObservableObject
         _isUdpEnabled = isUdpEnabled;
         _udpPort = NormalizeUdpPort(udpPort);
         _udpAddress = NormalizeUdpAddress(udpAddress);
+        _hz = NormalizeHz(hz);
         HasSecondary = hasSecondary;
         _isDuplicateRow = isDuplicateRow;
     }
+
+    public const double DefaultHz = 1.0;
+    public const double MinHz = 0.1;
 
     public NmeaSentenceId Id { get; }
 
@@ -88,6 +100,20 @@ public sealed partial class SentenceItem : ObservableObject
         {
             UdpAddress = normalized;
         }
+    }
+
+    partial void OnHzChanged(double value)
+    {
+        double normalized = NormalizeHz(value);
+        if (Math.Abs(value - normalized) > double.Epsilon)
+        {
+            Hz = normalized;
+        }
+    }
+
+    private static double NormalizeHz(double hz)
+    {
+        return double.IsFinite(hz) && hz >= MinHz ? hz : DefaultHz;
     }
 
     private static int NormalizeUdpPort(int port)

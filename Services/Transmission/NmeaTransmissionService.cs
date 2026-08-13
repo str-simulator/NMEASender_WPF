@@ -11,6 +11,11 @@ namespace NMEASender.Wpf.Services.Transmission;
 
 public sealed class NmeaTransmissionService : INmeaTransmissionService
 {
+    // STR is an internal sentence for ECDIS only: always broadcast on a fixed port,
+    // regardless of the configured UDP transport profile (unicast/multicast).
+    private const int InternalSentenceUdpPort = 40014;
+    private const string InternalSentenceBroadcastAddress = "255.255.255.255";
+
     private readonly IOutputChannelService _outputChannelService;
     private readonly ISentenceComposerService _sentenceComposer;
     private readonly IPortBaudRateService _portBaudRateService;
@@ -164,9 +169,16 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
             context.EnabledSentences,
             context.BuildOptions.ProjectType);
 
+        long nowTicks = Environment.TickCount64;
         List<SentenceSendTask> tasks = new();
         foreach (SentenceItem item in dispatchSentences)
         {
+            double minIntervalMs = 1000.0 / item.Hz;
+            if (item.LastSentTicks != long.MinValue && nowTicks - item.LastSentTicks < minIntervalMs)
+            {
+                continue;
+            }
+
             if (!_sentenceComposer.ShouldSend(item, context.IsIosSource, context.Data))
             {
                 continue;
@@ -199,13 +211,14 @@ public sealed class NmeaTransmissionService : INmeaTransmissionService
             }
 
             int udpPort = isUdpEnabled
-                ? _projectSentenceFrameService.ResolveUdpPort(item, context.DefaultUdpPort, context.BuildOptions.ProjectType)
+                ? (item.Id == NmeaSentenceId.STR ? InternalSentenceUdpPort : _projectSentenceFrameService.ResolveUdpPort(item, context.DefaultUdpPort, context.BuildOptions.ProjectType))
                 : 0;
             string? udpAddress = isUdpEnabled
-                ? _projectSentenceFrameService.ResolveUdpAddress(item, context.UdpTransportOptions, context.BuildOptions.ProjectType)
+                ? (item.Id == NmeaSentenceId.STR ? InternalSentenceBroadcastAddress : _projectSentenceFrameService.ResolveUdpAddress(item, context.UdpTransportOptions, context.BuildOptions.ProjectType))
                 : null;
 
             tasks.Add(new SentenceSendTask(item, framedSentences, isComEnabled, isUdpEnabled, udpPort, udpAddress));
+            item.LastSentTicks = nowTicks;
         }
 
         return tasks;

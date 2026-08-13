@@ -90,7 +90,7 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
 
         foreach (SentenceUdpPortSetting setting in sentenceUdpPortSettings)
         {
-            SentenceUdpPorts.Add(new SentenceUdpPortItem(setting.RowKey, setting.SentenceLabel, setting.UdpPort, setting.UdpAddress));
+            SentenceUdpPorts.Add(new SentenceUdpPortItem(setting.RowKey, setting.SentenceLabel, setting.UdpPort, setting.UdpAddress, setting.Hz));
         }
 
         HookSentenceUdpRows();
@@ -110,6 +110,8 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
     public IReadOnlyDictionary<string, int> SentenceUdpPortResult { get; private set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyDictionary<string, string> SentenceUdpAddressResult { get; private set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyDictionary<string, double> SentenceHzResult { get; private set; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
     public int UdpPortResult { get; private set; } = 40014;
 
@@ -202,6 +204,7 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
 
         Dictionary<string, int> udpPortResult = new(StringComparer.OrdinalIgnoreCase);
         Dictionary<string, string> udpAddressResult = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, double> hzResult = new(StringComparer.OrdinalIgnoreCase);
         foreach (SentenceUdpPortItem item in SentenceUdpPorts)
         {
             if (string.IsNullOrWhiteSpace(item.RowKey))
@@ -215,7 +218,14 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
                 return;
             }
 
+            if (item.Hz < SentenceItem.MinHz)
+            {
+                ValidationMessage = $"{item.SentenceLabel} Hz must be at least {SentenceItem.MinHz.ToString(CultureInfo.InvariantCulture)}.";
+                return;
+            }
+
             udpPortResult[item.RowKey] = item.UdpPort;
+            hzResult[item.RowKey] = item.Hz;
 
             string candidateAddress = (item.UdpAddress ?? string.Empty).Trim();
             if (IsSentenceMulticastAddressEditable)
@@ -270,6 +280,7 @@ public sealed partial class PortBaudRateSettingsViewModel : ObservableObject
         Result = baudRateResult;
         SentenceUdpPortResult = udpPortResult;
         SentenceUdpAddressResult = udpAddressResult;
+        SentenceHzResult = hzResult;
         UdpPortResult = udpPort;
         CloseRequested?.Invoke(this, true);
     }

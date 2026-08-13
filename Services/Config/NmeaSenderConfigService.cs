@@ -6,6 +6,7 @@ using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Config;
 using NMEASender.Wpf.Services.Interfaces.Network;
 using NMEASender.Wpf.Services.Interfaces.Projects;
+using System.Globalization;
 using System.IO;
 using System.IO.Ports;
 
@@ -26,6 +27,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     private const string PortsSection = "SENTENCE PORTS";
     private const string UdpPortsSection = "UDP PORTS";
     private const string UdpAddressesSection = "UDP ADDRESSES";
+    private const string HzSection = "SENTENCE HZ";
     private const string BaudSection = "BAUD RATE";
     private const string SourceNotesSection = "SOURCE NOTES";
 
@@ -35,7 +37,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     public int DataBits { get; set; } = 8;
     public Parity Parity { get; set; } = Parity.None;
     public StopBits StopBits { get; set; } = StopBits.One;
-    public int SendInterval { get; set; } = 500;
+    public int SendInterval { get; set; } = 20;
     public bool RightRpm { get; set; } = true;
     public bool TrueWind { get; set; } = true;
     public bool UseHdmOutput { get; set; } = true;
@@ -49,6 +51,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     public Dictionary<NmeaSentenceId, List<string>> SentencePortRows { get; } = new();
     public Dictionary<NmeaSentenceId, List<int>> SentenceUdpPortRows { get; } = new();
     public Dictionary<NmeaSentenceId, List<string>> SentenceUdpAddressRows { get; } = new();
+    public Dictionary<NmeaSentenceId, List<double>> SentenceHzRows { get; } = new();
     public Dictionary<string, int> PortBaudRates { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> SourceNotes { get; } = new(StringComparer.OrdinalIgnoreCase);
     public string SavePath { get; set; } = Path.Combine(AppContext.BaseDirectory, "NMEASender.Wpf.ini");
@@ -145,7 +148,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         config.DataBits = ini.GetInt(GpsSection, "DATA BIT", 8);
         config.StopBits = MapStopBits(ini.GetInt(GpsSection, "STOP BIT", 0));
         config.Parity = MapParity(ini.GetInt(GpsSection, "PARITY CHECK", 0));
-        config.SendInterval = Math.Max(50, ini.GetInt(GpsSection, "SendInterval", 500));
+        config.SendInterval = Math.Max(20, ini.GetInt(GpsSection, "SendInterval", 20));
         config.RightRpm = ini.GetBool(GpsSection, "RIGHT RPM", true);
         config.TrueWind = ini.GetBool(GpsSection, "TRUE WIND", true);
         config.UseHdmOutput = ini.GetBool(GpsSection, "Magnetic", true);
@@ -161,6 +164,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
             .Load(projectType, configDirectory, config.UdpPort)
             .WithFallbackPort(config.UdpPort);
 
+        double defaultHz = 1000.0 / Math.Max(1, config.SendInterval);
         foreach (NmeaSentenceId id in Enum.GetValues(typeof(NmeaSentenceId)))
         {
             string? defaultPort = id switch
@@ -174,7 +178,8 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
             List<int> udpPorts = LoadSentenceUdpPorts(sentenceUdpIni, UdpPortsSection, key, config.UdpPort);
             string defaultUdpAddress = config.UdpTransportOptions.MulticastAddress;
             List<string> udpAddresses = LoadSentenceUdpAddresses(sentenceUdpIni, UdpAddressesSection, key, defaultUdpAddress);
-            int rowCount = Math.Max(ports.Count, Math.Max(udpPorts.Count, udpAddresses.Count));
+            List<double> hzValues = LoadSentenceHz(ini, HzSection, key, defaultHz);
+            int rowCount = Math.Max(ports.Count, Math.Max(udpPorts.Count, Math.Max(udpAddresses.Count, hzValues.Count)));
             while (ports.Count < rowCount)
             {
                 ports.Add(defaultPort);
@@ -190,10 +195,16 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
                 udpAddresses.Add(defaultUdpAddress);
             }
 
+            while (hzValues.Count < rowCount)
+            {
+                hzValues.Add(defaultHz);
+            }
+
             config.SentencePorts[id] = ports[0];
             config.SentencePortRows[id] = ports;
             config.SentenceUdpPortRows[id] = udpPorts;
             config.SentenceUdpAddressRows[id] = udpAddresses;
+            config.SentenceHzRows[id] = hzValues;
         }
 
         foreach ((string portName, string baudText) in ini.GetSectionValues(BaudSection))
@@ -280,6 +291,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
 
                 string? rowKey = index == 1 ? key : $"{key}#{index}";
                 ini.Set(PortsSection, rowKey, item.PortName);
+                ini.Set(HzSection, rowKey, item.Hz.ToString(CultureInfo.InvariantCulture));
                 index++;
             }
         }
@@ -432,6 +444,27 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         return ports;
     }
 
+    private static List<double> LoadSentenceHz(IIniFileService ini, string section, string key, double defaultHz)
+    {
+        const string missing = "__MISSING__";
+        List<double> values = new List<double>();
+        string firstValue = ini.Get(section, key, missing);
+        values.Add(ParseSentenceHz(firstValue, defaultHz));
+
+        for (int index = 2; ; index++)
+        {
+            string value = ini.Get(section, $"{key}#{index}", missing);
+            if (value == missing)
+            {
+                break;
+            }
+
+            values.Add(ParseSentenceHz(value, defaultHz));
+        }
+
+        return values;
+    }
+
     private static List<string> LoadSentenceUdpAddresses(IIniFileService ini, string section, string key, string defaultUdpAddress)
     {
         const string missing = "__MISSING__";
@@ -477,6 +510,13 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     private static int NormalizeSentenceUdpPort(int port)
     {
         return port is >= 1 and <= 65535 ? port : 40014;
+    }
+
+    private static double ParseSentenceHz(string? value, double fallbackHz)
+    {
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double hz) && hz >= SentenceItem.MinHz
+            ? hz
+            : fallbackHz;
     }
 
     private static string ParseSentenceUdpAddress(string? value, string fallbackAddress)

@@ -23,7 +23,7 @@ namespace NMEASender.Wpf.Services.Workflow;
 
 public sealed class MainWorkflowService : IMainWorkflowService
 {
-    private readonly DispatcherTimer _timer;
+    private readonly Timer _sendTimer;
     private readonly DispatcherTimer _sharedMemoryRetryTimer;
     private readonly IOutputChannelService _outputChannelService;
     private readonly IPortBaudRateService _portBaudRateService;
@@ -81,8 +81,16 @@ public sealed class MainWorkflowService : IMainWorkflowService
         State.UseHdmOutput = _config.UseHdmOutput;
         State.UdpPortText = _config.UdpPort.ToString(CultureInfo.InvariantCulture);
 
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_config.SendInterval) };
-        _timer.Tick += (_, _) => SendTick();
+        // Fires on a thread-pool thread so the tick itself is never delayed by
+        // Dispatcher queue congestion (e.g. UI rendering under heavy CPU load);
+        // the actual send work is then marshaled to the UI thread at Send priority.
+        _sendTimer = new Timer(_ =>
+        {
+            if (State.IsRunning)
+            {
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(SendTick, DispatcherPriority.Send);
+            }
+        }, null, Timeout.Infinite, Timeout.Infinite);
 
         _sharedMemoryRetryTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _sharedMemoryRetryTimer.Tick += OnSharedMemoryRetryTick;
@@ -180,7 +188,8 @@ public sealed class MainWorkflowService : IMainWorkflowService
 
             SaveConfig();
             State.IsRunning = true;
-            _timer.Start();
+            TimeSpan sendInterval = TimeSpan.FromMilliseconds(_config.SendInterval);
+            _sendTimer.Change(sendInterval, sendInterval);
             SendTick();
         }
         catch (Exception ex)
@@ -197,7 +206,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
     public void Stop()
     {
         _sharedMemoryRetryTimer.Stop();
-        _timer.Stop();
+        _sendTimer.Change(Timeout.Infinite, Timeout.Infinite);
         _nmeaTransmissionService.Stop(State.IsRunning, AddLog);
         State.IsRunning = false;
     }
@@ -228,6 +237,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 out IReadOnlyDictionary<string, int> updatedPortBaudRates,
                 out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts,
                 out IReadOnlyDictionary<string, string> updatedSentenceUdpAddresses,
+                out IReadOnlyDictionary<string, double> updatedSentenceHz,
                 out int updatedUdpPort,
                 out UdpTransportOptions updatedUdpTransportOptions))
         {
@@ -256,6 +266,12 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 out string udpError))
         {
             AddLog($"Sentence UDP setting failed: {udpError}");
+            return;
+        }
+
+        if (!TryApplySentenceHzSettings(updatedSentenceHz, out string hzError))
+        {
+            AddLog($"Sentence Hz setting failed: {hzError}");
             return;
         }
 
@@ -392,6 +408,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
     {
         State.PropertyChanged -= State_PropertyChanged;
         Stop();
+        _sendTimer.Dispose();
     }
 
     private async void SendTick()
@@ -593,6 +610,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
             source.IsUdpEnabled,
             source.UdpPort,
             source.UdpAddress,
+            source.Hz,
             source.HasSecondary,
             isDuplicateRow: true)
         {
@@ -825,7 +843,8 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 rowKey,
                 displayLabel,
                 NormalizeUdpPort(item.UdpPort),
-                ResolveSentenceUdpAddress(item.UdpAddress, _config.UdpTransportOptions.MulticastAddress)));
+                ResolveSentenceUdpAddress(item.UdpAddress, _config.UdpTransportOptions.MulticastAddress),
+                item.Hz));
         }
 
         return settings;
@@ -912,6 +931,37 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 !string.IsNullOrWhiteSpace(udpAddress))
             {
                 item.UdpAddress = udpAddress;
+            }
+        }
+
+        return true;
+    }
+
+    private bool TryApplySentenceHzSettings(IReadOnlyDictionary<string, double> sentenceHz, out string error)
+    {
+        error = string.Empty;
+        Dictionary<string, double> normalizedHz = new(StringComparer.OrdinalIgnoreCase);
+        foreach ((string rowKey, double hz) in sentenceHz)
+        {
+            if (string.IsNullOrWhiteSpace(rowKey))
+            {
+                continue;
+            }
+
+            if (hz < SentenceItem.MinHz)
+            {
+                error = new InvalidSentenceHzException().Message;
+                return false;
+            }
+
+            normalizedHz[rowKey] = hz;
+        }
+
+        foreach ((SentenceItem item, string rowKey, _) in EnumerateConfigurableSentenceRows())
+        {
+            if (normalizedHz.TryGetValue(rowKey, out double hz))
+            {
+                item.Hz = hz;
             }
         }
 

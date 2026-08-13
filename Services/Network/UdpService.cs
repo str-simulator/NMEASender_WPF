@@ -41,7 +41,9 @@ public sealed class UdpService : IUdpService
             }
 
             _options = normalized;
-            _client.EnableBroadcast = normalized.Mode == UdpTransportMode.Broadcast;
+            // Always allow broadcast sends: STR (internal sentence) broadcasts on a fixed
+            // port regardless of the configured transport mode (unicast/multicast).
+            _client.EnableBroadcast = true;
 
             if (normalized.Mode == UdpTransportMode.Multicast)
             {
