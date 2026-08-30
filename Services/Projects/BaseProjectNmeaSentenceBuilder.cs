@@ -44,10 +44,11 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
         double waterSpeedKmh,
         NmeaBuildOptions options)
     {
-        double magneticHeading = NormalizeDegrees(gyroHeading + magneticVariation);
+        double trueTrack = NormalizeDegreesForDisplay(gyroHeading, 1);
+        double magneticHeading = NormalizeDegreesForDisplay(gyroHeading + magneticVariation, 1);
         string rawSentence = Full(string.Create(
             Invariant,
-            $"GPVTG,{gyroHeading:0.0},T,{magneticHeading:0.0},M,{waterSpeedKnots:0.0},N,{waterSpeedKmh:0.0},K"));
+            $"GPVTG,{trueTrack:0.0},T,{magneticHeading:0.0},M,{waterSpeedKnots:0.0},N,{waterSpeedKmh:0.0},K,S"));
 
         return ApplyTalkerProfile(One(rawSentence), NmeaSentenceId.Vtg, TalkerProfile, options.UseHdmOutput)[0];
     }
@@ -100,7 +101,7 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
     {
         (string Value, char Hemisphere) lat = FormatLatitude(data.Latitude);
         (string Value, char Hemisphere) lon = FormatLongitude(data.Longitude);
-        string body = string.Create(Invariant, $"GPGGA,{TimeOfDay(data.Time, true)},{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},1,05,02.5,,M,,M,,");
+        string body = string.Create(Invariant, $"GPGGA,{TimeOfDay(data.Time, true)},{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},8,05,02.5,,M,,M,,");
         return Full(body);
     }
 
@@ -108,7 +109,7 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
     {
         (string Value, char Hemisphere) lat = FormatLatitude(data.Latitude);
         (string Value, char Hemisphere) lon = FormatLongitude(data.Longitude);
-        string body = string.Create(Invariant, $"GPGLL,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},{TimeOfDay(data.Time, true)},A");
+        string body = string.Create(Invariant, $"GPGLL,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},{TimeOfDay(data.Time, true)},A,S");
         return Full(body);
     }
 
@@ -116,17 +117,20 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
     {
         (string Value, char Hemisphere) lat = FormatLatitude(data.Latitude);
         (string Value, char Hemisphere) lon = FormatLongitude(data.Longitude);
+        double courseOverGround = NormalizeDegreesForDisplay(derived.CourseOverGround, 1);
         string body = string.Create(
             Invariant,
-            $"GPRMC,{TimeOfDay(data.Time, true)},A,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},{derived.SpeedOverGroundKnots:00.0},{derived.CourseOverGround:000.0},{data.Time:ddMMyy},,");
+            $"GPRMC,{TimeOfDay(data.Time, true)},A,{lat.Value},{lat.Hemisphere},{lon.Value},{lon.Hemisphere},{derived.SpeedOverGroundKnots:00.0},{courseOverGround:000.0},{data.Time:ddMMyy},,,S,");
         return Full(body);
     }
 
     protected static string BuildVtg(NmeaDataDto data, NmeaDerivedData derived)
     {
+        double trueTrack = NormalizeDegreesForDisplay(data.GyroHeading, 1);
+        double magneticTrack = NormalizeDegreesForDisplay(derived.MagneticHeading, 1);
         string body = string.Create(
             Invariant,
-            $"GPVTG,{data.GyroHeading:0.0},T,{derived.MagneticHeading:0.0},M,{derived.WaterSpeedKnots:0.0},N,{derived.WaterSpeedKmh:0.0},K");
+            $"GPVTG,{trueTrack:0.0},T,{magneticTrack:0.0},M,{derived.WaterSpeedKnots:0.0},N,{derived.WaterSpeedKmh:0.0},K,S");
         return Full(body);
     }
 
@@ -138,14 +142,18 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
 
     protected static string BuildHdt(NmeaDataDto data)
     {
-        return Full(string.Create(Invariant, $"HEHDT,{data.GyroHeading:000.0},T"));
+        double heading = NormalizeDegreesForDisplay(data.GyroHeading, 1);
+        return Full(string.Create(Invariant, $"HEHDT,{heading:000.0},T"));
     }
 
     protected static string BuildVbw(NmeaDerivedData derived)
     {
+        // Stern water/ground speed sensors are not modeled by this simulator; the trailing
+        // 4 fields are left empty (per IEC 61162-1:2024's null-field convention) rather than
+        // fabricating stern speed values.
         string body = string.Create(
             Invariant,
-            $"--VBW,{derived.WaterLongitudinalKnots:0.0},{derived.WaterLateralKnots:0.0},A,{derived.LongitudinalKnots:0.0},{derived.LateralKnots:0.0},A");
+            $"--VBW,{derived.WaterLongitudinalKnots:0.0},{derived.WaterLateralKnots:0.0},A,{derived.LongitudinalKnots:0.0},{derived.LateralKnots:0.0},A,,,,");
         return Full(body);
     }
 
@@ -181,13 +189,15 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
 
     protected static string BuildHdg(NmeaDataDto data, bool useHdmOutput)
     {
-        double magnetic = NormalizeDegrees(data.Heading + data.MagneticVariation);
+        double magnetic = data.Heading + data.MagneticVariation;
         if (useHdmOutput)
         {
-            return Full(string.Create(Invariant, $"--HDM,{magnetic:0},M"));
+            double magneticWhole = NormalizeDegreesForDisplay(magnetic, 0);
+            return Full(string.Create(Invariant, $"--HDM,{magneticWhole:0},M"));
         }
 
-        return Full(string.Create(Invariant, $"HCHDG,{magnetic:0.0},0.0,E,0.0,E"));
+        double magneticOneDecimal = NormalizeDegreesForDisplay(magnetic, 1);
+        return Full(string.Create(Invariant, $"HCHDG,{magneticOneDecimal:0.0},0.0,E,0.0,E"));
     }
 
     protected static string BuildDpt(NmeaDataDto data)
@@ -238,8 +248,8 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
     {
         return new[]
         {
-            Full(string.Create(Invariant, $"--TRD,1,{data.ThrusterThrustBow * 200.0:0.0},P,100,P,,")),
-            Full(string.Create(Invariant, $"--TRD,0,{data.ThrusterThrustStern * 200.0:0.0},P,100,P,,"))
+            Full(string.Create(Invariant, $"--TRD,1,{data.ThrusterThrustBow * 200.0:0.0},P,100,P,")),
+            Full(string.Create(Invariant, $"--TRD,0,{data.ThrusterThrustStern * 200.0:0.0},P,100,P,"))
         };
     }
 
@@ -250,7 +260,10 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
 
     protected static string BuildHrm(NmeaDataDto data)
     {
-        return Full(string.Create(Invariant, $"--HRM,{data.OwnshipRoll:0.0},0.5,{data.OwnshipRoll:0.0},{data.OwnshipRoll:0.0},A,,,,,"));
+        // IEC 61162-1:2024 HRM requires 13 fields including a trailing sentence status flag.
+        // The extra slots have no corresponding sensor data in this simulator and are left
+        // empty; only the field count/status flag are aligned with the standard here.
+        return Full(string.Create(Invariant, $"--HRM,{data.OwnshipRoll:0.0},0.5,{data.OwnshipRoll:0.0},{data.OwnshipRoll:0.0},A,,,,,,,,A"));
     }
 
     protected static IReadOnlyList<string> BuildVdm(NmeaDataDto data)
@@ -384,7 +397,21 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
 
     protected static (string Value, char Hemisphere) FormatLongitude(double longitude)
     {
-        return FormatPosition(longitude, longitude < 0.0 ? 'W' : 'E');
+        double normalized = NormalizeLongitude(longitude);
+        return FormatPosition(normalized, normalized < 0.0 ? 'W' : 'E');
+    }
+
+    // Wraps longitude into (-180, 180]; a value drifting past +/-180 (e.g. crossing the
+    // antimeridian) flips hemisphere instead of growing past the valid range.
+    protected static double NormalizeLongitude(double longitude)
+    {
+        double wrapped = (longitude + 180.0) % 360.0;
+        if (wrapped < 0.0)
+        {
+            wrapped += 360.0;
+        }
+
+        return wrapped - 180.0;
     }
 
     protected static (string Value, char Hemisphere) FormatPosition(double degrees, char hemisphere)
@@ -414,6 +441,15 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
     {
         degrees %= 360.0;
         return degrees < 0.0 ? degrees + 360.0 : degrees;
+    }
+
+    // Rounds to the given display precision and re-wraps 360.0 (a rounding artifact at the
+    // top of the range) back down to 0.0, so formatted output never shows "360.0"/"360".
+    protected static double NormalizeDegreesForDisplay(double degrees, int decimals)
+    {
+        double normalized = NormalizeDegrees(degrees);
+        double rounded = Math.Round(normalized, decimals, MidpointRounding.AwayFromZero);
+        return rounded >= 360.0 ? 0.0 : rounded;
     }
 
     protected static (double Water, double Air, double Humidity) MonthlyWeather(int month)

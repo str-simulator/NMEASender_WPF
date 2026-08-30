@@ -164,7 +164,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
             .Load(projectType, configDirectory, config.UdpPort)
             .WithFallbackPort(config.UdpPort);
 
-        double defaultHz = 1000.0 / Math.Max(1, config.SendInterval);
+        double defaultHz = SentenceItem.DefaultHz;
         foreach (NmeaSentenceId id in Enum.GetValues(typeof(NmeaSentenceId)))
         {
             string? defaultPort = id switch
