@@ -13,6 +13,21 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         SetSvgIcon();
+        ClampToWorkArea();
+    }
+
+    private void ClampToWorkArea()
+    {
+        Rect workArea = SystemParameters.WorkArea;
+        if (Height > workArea.Height)
+        {
+            Height = workArea.Height;
+        }
+
+        if (Width > workArea.Width)
+        {
+            Width = workArea.Width;
+        }
     }
 
     private void SetSvgIcon()
