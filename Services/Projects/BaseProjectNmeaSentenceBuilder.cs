@@ -164,7 +164,12 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
 
     protected static string BuildRsa(NmeaDataDto data)
     {
-        return Full(string.Create(Invariant, $"--RSA,{data.RudderStbd * -1.0:0.0},A,{data.RudderPort * -1.0:0.0},A"));
+        // IEC 61162-1:2024 RSA defines 4 rudder sensor pairs (angle + status). This simulator
+        // only models 2 (stbd/port); the remaining 2 are padded with 0.0/V (sensor not available)
+        // rather than fabricating a valid (A) reading.
+        return Full(string.Create(
+            Invariant,
+            $"--RSA,{data.RudderStbd * -1.0:0.0},A,{data.RudderPort * -1.0:0.0},A,0.0,V,0.0,V"));
     }
 
     protected static string BuildRpmPort(NmeaDataDto data)
