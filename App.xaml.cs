@@ -52,17 +52,19 @@ public partial class App : Application
         services.AddSingleton<IProjectUdpTransportProfileStore, PS2404AUdpTransportProfileStore>();
         services.AddSingleton<IUdpTransportProfileService, UdpTransportProfileService>();
 
-        services.AddSingleton<INmeaSenderConfigService>(sp =>
-            NmeaSenderConfigService.Load(
-                sp.GetRequiredService<IUdpTransportProfileService>(),
-                sp.GetServices<IProjectSendFlagCodec>()));
-
-        services.AddSingleton<ISerialPortHubService, SerialPortHubService>();
-        services.AddSingleton<IUdpService, UdpService>();
         services.AddSingleton<IProjectNmeaSentenceBuilder, Ps2603NmeaSentenceBuilder>();
         services.AddSingleton<IProjectNmeaSentenceBuilder, Ps000NmeaSentenceBuilder>();
         services.AddSingleton<IProjectNmeaSentenceBuilder, PS2404ANmeaSentenceBuilder>();
         services.AddSingleton<INmeaSentenceBuilderService, NmeaSentenceBuilderService>();
+
+        services.AddSingleton<INmeaSenderConfigService>(sp =>
+            NmeaSenderConfigService.Load(
+                sp.GetRequiredService<IUdpTransportProfileService>(),
+                sp.GetServices<IProjectSendFlagCodec>(),
+                sp.GetRequiredService<INmeaSentenceBuilderService>()));
+
+        services.AddSingleton<ISerialPortHubService, SerialPortHubService>();
+        services.AddSingleton<IUdpService, UdpService>();
 
         services.AddSingleton<IProjectSentenceComposerProfile>(_ => new DefaultProjectSentenceComposerProfile(ProjectType.PS2603));
         services.AddSingleton<IProjectSentenceComposerProfile>(_ => new DefaultProjectSentenceComposerProfile(ProjectType.PS000));

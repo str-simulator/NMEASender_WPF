@@ -11,5 +11,6 @@ public interface IProjectSentenceComposerProfile
     string BuildIosVtgSentence(
         NmeaDataDto data,
         NmeaBuildOptions options,
-        INmeaSentenceBuilderService sentenceBuilder);
+        INmeaSentenceBuilderService sentenceBuilder,
+        string talkerId);
 }

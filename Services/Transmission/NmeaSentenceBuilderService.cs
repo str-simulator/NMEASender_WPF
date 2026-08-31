@@ -33,9 +33,9 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
             : builderList[0];
     }
 
-    public IReadOnlyList<string> Build(NmeaSentenceId id, NmeaDataDto data, NmeaBuildOptions options)
+    public IReadOnlyList<string> Build(NmeaSentenceId id, NmeaDataDto data, NmeaBuildOptions options, string talkerId)
     {
-        return Resolve(options.ProjectType).Build(id, data, options);
+        return Resolve(options.ProjectType).Build(id, data, options, talkerId);
     }
 
     public byte Checksum(string body)
@@ -43,14 +43,20 @@ public sealed class NmeaSentenceBuilderService : INmeaSentenceBuilderService
         return _fallbackBuilder.Checksum(body);
     }
 
-    public string BuildVtgSentence(double gyroHeading, double magneticVariation, double waterSpeedKnots, double waterSpeedKmh, NmeaBuildOptions options)
+    public string BuildVtgSentence(double gyroHeading, double magneticVariation, double waterSpeedKnots, double waterSpeedKmh, NmeaBuildOptions options, string talkerId)
     {
         return Resolve(options.ProjectType).BuildVtgSentence(
             gyroHeading,
             magneticVariation,
             waterSpeedKnots,
             waterSpeedKmh,
-            options);
+            options,
+            talkerId);
+    }
+
+    public string ResolveDefaultTalkerId(NmeaSentenceId id, bool useHdmOutput, ProjectType projectType)
+    {
+        return Resolve(projectType).ResolveDefaultTalkerId(id, useHdmOutput);
     }
 
     private IProjectNmeaSentenceBuilder Resolve(ProjectType projectType)

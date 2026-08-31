@@ -12,7 +12,8 @@ public sealed class PS2404ASentenceComposerProfile : BaseProjectSentenceComposer
     public override string BuildIosVtgSentence(
         NmeaDataDto data,
         NmeaBuildOptions options,
-        INmeaSentenceBuilderService sentenceBuilder)
+        INmeaSentenceBuilderService sentenceBuilder,
+        string talkerId)
     {
         bool useKsoe = data.KsoeMode == PS2404AKsoeModes.EngineAndRudder;
         double sogKnots;
@@ -33,7 +34,7 @@ public sealed class PS2404ASentenceComposerProfile : BaseProjectSentenceComposer
             magneticVariation = data.MagneticVariation;
         }
 
-        return sentenceBuilder.BuildVtgSentence(trueCourse, magneticVariation, sogKnots, sogKnots * 1.852, options);
+        return sentenceBuilder.BuildVtgSentence(trueCourse, magneticVariation, sogKnots, sogKnots * 1.852, options, talkerId);
     }
 
     private static double NormalizeSingleTurn(double degrees)

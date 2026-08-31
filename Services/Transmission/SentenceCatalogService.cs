@@ -128,7 +128,10 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
             List<double>? configuredHz = config.SentenceHzRows.TryGetValue(template.Id, out List<double>? hzValues) && hzValues.Count > 0
                 ? hzValues
                 : new List<double> { SentenceItem.DefaultHz };
-            int rowCount = Math.Max(configuredPorts.Count, Math.Max(configuredUdpPorts.Count, Math.Max(configuredUdpAddresses.Count, configuredHz.Count)));
+            List<string>? configuredTalkerIds = config.SentenceTalkerIdRows.TryGetValue(template.Id, out List<string>? talkerIds) && talkerIds.Count > 0
+                ? talkerIds
+                : new List<string> { string.Empty };
+            int rowCount = Math.Max(configuredPorts.Count, Math.Max(configuredUdpPorts.Count, Math.Max(configuredUdpAddresses.Count, Math.Max(configuredHz.Count, configuredTalkerIds.Count))));
 
             for (int index = 0; index < rowCount; index++)
             {
@@ -136,6 +139,7 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
                 int udpPort = ResolveUdpPort(configuredUdpPorts, index, config.UdpPort);
                 string udpAddress = ResolveUdpAddress(configuredUdpAddresses, index, config.UdpTransportOptions.MulticastAddress);
                 double hz = ResolveHz(configuredHz, index);
+                string talkerId = ResolveTalkerId(configuredTalkerIds, index);
                 bool isDuplicateRow = index > 0;
                 target.Add(new SentenceItem(
                     template.Id,
@@ -147,6 +151,7 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
                     udpPort,
                     udpAddress,
                     hz,
+                    talkerId,
                     template.HasSecondary,
                     isDuplicateRow));
             }
@@ -200,6 +205,16 @@ public sealed class SentenceCatalogService : ISentenceCatalogService
         return configuredHz.Count > 0 && configuredHz[0] >= SentenceItem.MinHz
             ? configuredHz[0]
             : SentenceItem.DefaultHz;
+    }
+
+    private static string ResolveTalkerId(IReadOnlyList<string> configuredTalkerIds, int index)
+    {
+        if (index < configuredTalkerIds.Count)
+        {
+            return configuredTalkerIds[index];
+        }
+
+        return configuredTalkerIds.Count > 0 ? configuredTalkerIds[0] : string.Empty;
     }
 
     private static string ResolveUdpAddress(IReadOnlyList<string> configuredUdpAddresses, int index, string defaultUdpAddress)

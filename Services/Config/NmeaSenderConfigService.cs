@@ -6,6 +6,7 @@ using NMEASender.Wpf.Models.UI;
 using NMEASender.Wpf.Services.Interfaces.Config;
 using NMEASender.Wpf.Services.Interfaces.Network;
 using NMEASender.Wpf.Services.Interfaces.Projects;
+using NMEASender.Wpf.Services.Interfaces.Transmission;
 using System.Globalization;
 using System.IO;
 using System.IO.Ports;
@@ -28,6 +29,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     private const string UdpPortsSection = "UDP PORTS";
     private const string UdpAddressesSection = "UDP ADDRESSES";
     private const string HzSection = "SENTENCE HZ";
+    private const string TalkerIdSection = "SENTENCE TALKER ID";
     private const string BaudSection = "BAUD RATE";
     private const string SourceNotesSection = "SOURCE NOTES";
 
@@ -52,6 +54,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
     public Dictionary<NmeaSentenceId, List<int>> SentenceUdpPortRows { get; } = new();
     public Dictionary<NmeaSentenceId, List<string>> SentenceUdpAddressRows { get; } = new();
     public Dictionary<NmeaSentenceId, List<double>> SentenceHzRows { get; } = new();
+    public Dictionary<NmeaSentenceId, List<string>> SentenceTalkerIdRows { get; } = new();
     public Dictionary<string, int> PortBaudRates { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> SourceNotes { get; } = new(StringComparer.OrdinalIgnoreCase);
     public string SavePath { get; set; } = Path.Combine(AppContext.BaseDirectory, "NMEASender.Wpf.ini");
@@ -89,7 +92,8 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
 
     public static NmeaSenderConfigService Load(
         IUdpTransportProfileService udpTransportProfileService,
-        IEnumerable<IProjectSendFlagCodec> sendFlagCodecs)
+        IEnumerable<IProjectSendFlagCodec> sendFlagCodecs,
+        INmeaSentenceBuilderService sentenceBuilder)
     {
         string? basePath = FindUpwards("NMEASender.ini");
         string? savePath = basePath is null
@@ -179,7 +183,9 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
             string defaultUdpAddress = config.UdpTransportOptions.MulticastAddress;
             List<string> udpAddresses = LoadSentenceUdpAddresses(sentenceUdpIni, UdpAddressesSection, key, defaultUdpAddress);
             List<double> hzValues = LoadSentenceHz(ini, HzSection, key, defaultHz);
-            int rowCount = Math.Max(ports.Count, Math.Max(udpPorts.Count, Math.Max(udpAddresses.Count, hzValues.Count)));
+            string defaultTalkerId = sentenceBuilder.ResolveDefaultTalkerId(id, config.UseHdmOutput, projectType);
+            List<string> talkerIds = LoadSentenceTalkerIds(ini, TalkerIdSection, key, defaultTalkerId);
+            int rowCount = Math.Max(ports.Count, Math.Max(udpPorts.Count, Math.Max(udpAddresses.Count, Math.Max(hzValues.Count, talkerIds.Count))));
             while (ports.Count < rowCount)
             {
                 ports.Add(defaultPort);
@@ -200,11 +206,17 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
                 hzValues.Add(defaultHz);
             }
 
+            while (talkerIds.Count < rowCount)
+            {
+                talkerIds.Add(defaultTalkerId);
+            }
+
             config.SentencePorts[id] = ports[0];
             config.SentencePortRows[id] = ports;
             config.SentenceUdpPortRows[id] = udpPorts;
             config.SentenceUdpAddressRows[id] = udpAddresses;
             config.SentenceHzRows[id] = hzValues;
+            config.SentenceTalkerIdRows[id] = talkerIds;
         }
 
         foreach ((string portName, string baudText) in ini.GetSectionValues(BaudSection))
@@ -292,6 +304,7 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
                 string? rowKey = index == 1 ? key : $"{key}#{index}";
                 ini.Set(PortsSection, rowKey, item.PortName);
                 ini.Set(HzSection, rowKey, item.Hz.ToString(CultureInfo.InvariantCulture));
+                ini.Set(TalkerIdSection, rowKey, item.TalkerId);
                 index++;
             }
         }
@@ -463,6 +476,33 @@ public sealed class NmeaSenderConfigService : INmeaSenderConfigService
         }
 
         return values;
+    }
+
+    private static List<string> LoadSentenceTalkerIds(IIniFileService ini, string section, string key, string defaultTalkerId)
+    {
+        const string missing = "__MISSING__";
+        List<string> values = new List<string>();
+        string firstValue = ini.Get(section, key, missing);
+        values.Add(firstValue == missing ? defaultTalkerId : NormalizeStoredTalkerId(firstValue));
+
+        for (int index = 2; ; index++)
+        {
+            string value = ini.Get(section, $"{key}#{index}", missing);
+            if (value == missing)
+            {
+                break;
+            }
+
+            values.Add(NormalizeStoredTalkerId(value));
+        }
+
+        return values;
+    }
+
+    private static string NormalizeStoredTalkerId(string? value)
+    {
+        string trimmed = (value ?? string.Empty).Trim().ToUpperInvariant();
+        return trimmed.Length == 2 ? trimmed : string.Empty;
     }
 
     private static List<string> LoadSentenceUdpAddresses(IIniFileService ini, string section, string key, string defaultUdpAddress)

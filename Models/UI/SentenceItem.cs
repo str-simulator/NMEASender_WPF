@@ -29,6 +29,10 @@ public sealed partial class SentenceItem : ObservableObject
     private double _hz;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayLabel))]
+    private string _talkerId = string.Empty;
+
+    [ObservableProperty]
     private string _primaryText = string.Empty;
 
     [ObservableProperty]
@@ -48,6 +52,7 @@ public sealed partial class SentenceItem : ObservableObject
         int udpPort,
         string udpAddress = "",
         double hz = DefaultHz,
+        string talkerId = "",
         bool hasSecondary = false,
         bool isDuplicateRow = false)
     {
@@ -60,6 +65,7 @@ public sealed partial class SentenceItem : ObservableObject
         _udpPort = NormalizeUdpPort(udpPort);
         _udpAddress = NormalizeUdpAddress(udpAddress);
         _hz = NormalizeHz(hz);
+        _talkerId = NormalizeTalkerId(talkerId);
         HasSecondary = hasSecondary;
         _isDuplicateRow = isDuplicateRow;
     }
@@ -72,6 +78,8 @@ public sealed partial class SentenceItem : ObservableObject
     public NmeaSendFlag Flag { get; }
 
     public string Label { get; }
+
+    public string DisplayLabel => BuildDisplayLabel(Label, TalkerId);
 
     public bool HasSecondary { get; }
 
@@ -111,9 +119,35 @@ public sealed partial class SentenceItem : ObservableObject
         }
     }
 
+    partial void OnTalkerIdChanged(string value)
+    {
+        string normalized = NormalizeTalkerId(value);
+        if (!string.Equals(value, normalized, StringComparison.Ordinal))
+        {
+            TalkerId = normalized;
+        }
+    }
+
     private static double NormalizeHz(double hz)
     {
         return double.IsFinite(hz) && hz >= MinHz ? hz : DefaultHz;
+    }
+
+    private static string NormalizeTalkerId(string? talkerId)
+    {
+        string trimmed = (talkerId ?? string.Empty).Trim().ToUpperInvariant();
+        return trimmed.Length > 2 ? trimmed[..2] : trimmed;
+    }
+
+    private static string BuildDisplayLabel(string label, string talkerId)
+    {
+        if (label.Length < 3 || label[0] != '$')
+        {
+            return label;
+        }
+
+        string effectiveTalkerId = talkerId.Length == 2 ? talkerId : "--";
+        return $"${effectiveTalkerId}{label[3..]}";
     }
 
     private static int NormalizeUdpPort(int port)

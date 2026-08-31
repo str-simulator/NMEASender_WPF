@@ -23,13 +23,13 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
 
     protected virtual NmeaTalkerProfile TalkerProfile => FallbackTalkerProfile;
 
-    public IReadOnlyList<string> Build(NmeaSentenceId id, NmeaDataDto data, NmeaBuildOptions options)
+    public IReadOnlyList<string> Build(NmeaSentenceId id, NmeaDataDto data, NmeaBuildOptions options, string talkerId)
     {
         data.Time = data.Time == default ? DateTime.Now : data.Time;
         NmeaDerivedData derived = NmeaDerivedData.From(data);
         IReadOnlyList<string> rawSentences = BuildRawSentences(id, data, derived, options);
 
-        return ApplyTalkerProfile(rawSentences, id, TalkerProfile, options.UseHdmOutput);
+        return ApplyTalkerId(rawSentences, talkerId);
     }
 
     public byte Checksum(string body)
@@ -37,12 +37,18 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
         return ComputeChecksum(body);
     }
 
+    public string ResolveDefaultTalkerId(NmeaSentenceId id, bool useHdmOutput)
+    {
+        return NormalizeTalkerId(TalkerProfile.ResolveTalkerId(id, useHdmOutput));
+    }
+
     public virtual string BuildVtgSentence(
         double gyroHeading,
         double magneticVariation,
         double waterSpeedKnots,
         double waterSpeedKmh,
-        NmeaBuildOptions options)
+        NmeaBuildOptions options,
+        string talkerId)
     {
         double trueTrack = NormalizeDegreesForDisplay(gyroHeading, 1);
         double magneticHeading = NormalizeDegreesForDisplay(gyroHeading + magneticVariation, 1);
@@ -50,7 +56,7 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
             Invariant,
             $"GPVTG,{trueTrack:0.0},T,{magneticHeading:0.0},M,{waterSpeedKnots:0.0},N,{waterSpeedKmh:0.0},K,S"));
 
-        return ApplyTalkerProfile(One(rawSentence), NmeaSentenceId.Vtg, TalkerProfile, options.UseHdmOutput)[0];
+        return ApplyTalkerId(One(rawSentence), talkerId)[0];
     }
 
     protected virtual IReadOnlyList<string> BuildRawSentences(
@@ -521,25 +527,16 @@ public abstract class BaseProjectNmeaSentenceBuilder : IProjectNmeaSentenceBuild
         return checksum;
     }
 
-    protected static IReadOnlyList<string> ApplyTalkerProfile(
-        IReadOnlyList<string> sentences,
-        NmeaSentenceId sentenceId,
-        NmeaTalkerProfile talkerProfile,
-        bool useHdmOutput)
+    protected static IReadOnlyList<string> ApplyTalkerId(IReadOnlyList<string> sentences, string talkerId)
     {
         if (sentences.Count == 0)
         {
             return sentences;
         }
 
-        string targetTalkerId = NormalizeTalkerId(talkerProfile.ResolveTalkerId(sentenceId, useHdmOutput));
-        if (targetTalkerId == "--")
-        {
-            return sentences;
-        }
-
+        string normalizedTalkerId = NormalizeTalkerId(talkerId);
         return sentences
-            .Select(sentence => ReplaceTalkerId(sentence, targetTalkerId))
+            .Select(sentence => ReplaceTalkerId(sentence, normalizedTalkerId))
             .ToArray();
     }
 

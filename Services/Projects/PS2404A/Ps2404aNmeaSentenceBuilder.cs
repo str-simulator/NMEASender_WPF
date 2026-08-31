@@ -48,14 +48,15 @@ public sealed class PS2404ANmeaSentenceBuilder : BaseProjectNmeaSentenceBuilder
         double magneticVariation,
         double waterSpeedKnots,
         double waterSpeedKmh,
-        NmeaBuildOptions options)
+        NmeaBuildOptions options,
+        string talkerId)
     {
         double magneticHeading = gyroHeading + magneticVariation;
         string rawSentence = Full(string.Create(
             Invariant,
             $"GPVTG,{gyroHeading:0.0},T,{magneticHeading:0.0},M,{waterSpeedKnots:0.0},N,{waterSpeedKmh:0.0},K,A"));
 
-        return ApplyTalkerProfile(One(rawSentence), NmeaSentenceId.Vtg, TalkerProfile, options.UseHdmOutput)[0];
+        return ApplyTalkerId(One(rawSentence), talkerId)[0];
     }
 
     protected override IReadOnlyList<string> BuildRawSentences(

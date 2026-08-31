@@ -16,6 +16,7 @@ public interface IBaudRateSettingService
         out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts,
         out IReadOnlyDictionary<string, string> updatedSentenceUdpAddresses,
         out IReadOnlyDictionary<string, double> updatedSentenceHz,
+        out IReadOnlyDictionary<string, string> updatedSentenceTalkerIds,
         out int updatedUdpPort,
         out UdpTransportOptions updatedUdpTransportOptions);
 }

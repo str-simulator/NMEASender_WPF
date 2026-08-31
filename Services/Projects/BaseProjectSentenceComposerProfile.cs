@@ -15,7 +15,8 @@ public abstract class BaseProjectSentenceComposerProfile : IProjectSentenceCompo
     public virtual string BuildIosVtgSentence(
         NmeaDataDto data,
         NmeaBuildOptions options,
-        INmeaSentenceBuilderService sentenceBuilder)
+        INmeaSentenceBuilderService sentenceBuilder,
+        string talkerId)
     {
         double waterLongitudinal = data.LongitudinalSpeedMps - data.CurrentDrift * Math.Cos((data.Heading - data.CurrentSet) * NmeaConstants.ToRadians);
         double waterKnots = waterLongitudinal * 3600.0 / NmeaConstants.NauticalMileMeters;
@@ -31,7 +32,7 @@ public abstract class BaseProjectSentenceComposerProfile : IProjectSentenceCompo
             waterKmh = _lastVtgKmh;
         }
 
-        return sentenceBuilder.BuildVtgSentence(data.GyroHeading, data.MagneticVariation, waterKnots, waterKmh, options);
+        return sentenceBuilder.BuildVtgSentence(data.GyroHeading, data.MagneticVariation, waterKnots, waterKmh, options, talkerId);
     }
 
     protected static double NormalizeDegrees(double degrees)

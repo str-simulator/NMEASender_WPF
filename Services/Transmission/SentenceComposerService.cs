@@ -47,13 +47,13 @@ public sealed class SentenceComposerService : ISentenceComposerService
         if (item.Id == NmeaSentenceId.Vtg && isIosSource)
         {
             string sentence = ResolveProfile(options.ProjectType)
-                .BuildIosVtgSentence(data, options, _sentenceBuilder);
+                .BuildIosVtgSentence(data, options, _sentenceBuilder, item.TalkerId);
             item.PrimaryText = sentence.TrimEnd();
             item.SecondaryText = string.Empty;
             return new[] { sentence };
         }
 
-        IReadOnlyList<string> sentences = _sentenceBuilder.Build(item.Id, data, options);
+        IReadOnlyList<string> sentences = _sentenceBuilder.Build(item.Id, data, options, item.TalkerId);
         item.PrimaryText = sentences.Count > 0 ? sentences[0].TrimEnd() : string.Empty;
         item.SecondaryText = sentences.Count > 1 ? sentences[1].TrimEnd() : string.Empty;
         return sentences;

@@ -238,6 +238,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 out IReadOnlyDictionary<string, int> updatedSentenceUdpPorts,
                 out IReadOnlyDictionary<string, string> updatedSentenceUdpAddresses,
                 out IReadOnlyDictionary<string, double> updatedSentenceHz,
+                out IReadOnlyDictionary<string, string> updatedSentenceTalkerIds,
                 out int updatedUdpPort,
                 out UdpTransportOptions updatedUdpTransportOptions))
         {
@@ -274,6 +275,8 @@ public sealed class MainWorkflowService : IMainWorkflowService
             AddLog($"Sentence Hz setting failed: {hzError}");
             return;
         }
+
+        TryApplySentenceTalkerIdSettings(updatedSentenceTalkerIds);
 
         int normalizedUdpPort = NormalizeUdpPort(updatedUdpPort);
         State.UdpPortText = normalizedUdpPort.ToString(CultureInfo.InvariantCulture);
@@ -611,6 +614,7 @@ public sealed class MainWorkflowService : IMainWorkflowService
             source.UdpPort,
             source.UdpAddress,
             source.Hz,
+            source.TalkerId,
             source.HasSecondary,
             isDuplicateRow: true)
         {
@@ -844,7 +848,8 @@ public sealed class MainWorkflowService : IMainWorkflowService
                 displayLabel,
                 NormalizeUdpPort(item.UdpPort),
                 ResolveSentenceUdpAddress(item.UdpAddress, _config.UdpTransportOptions.MulticastAddress),
-                item.Hz));
+                item.Hz,
+                item.TalkerId));
         }
 
         return settings;
@@ -966,6 +971,17 @@ public sealed class MainWorkflowService : IMainWorkflowService
         }
 
         return true;
+    }
+
+    private void TryApplySentenceTalkerIdSettings(IReadOnlyDictionary<string, string> sentenceTalkerIds)
+    {
+        foreach ((SentenceItem item, string rowKey, _) in EnumerateConfigurableSentenceRows())
+        {
+            if (sentenceTalkerIds.TryGetValue(rowKey, out string? talkerId))
+            {
+                item.TalkerId = talkerId;
+            }
+        }
     }
 
     private bool TryNormalizeUdpTransportOptions(
